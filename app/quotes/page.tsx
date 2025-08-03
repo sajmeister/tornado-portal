@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { fnHasPermission } from '../../src/lib/roles';
 import CmpHeader from '../components/CmpHeader';
 
 interface IProduct {
@@ -179,6 +180,33 @@ export default function QuotesPage() {
     }
   };
 
+  const fnUpdateQuoteStatus = async (strQuoteId: string, strNewStatus: string, strNotes?: string) => {
+    try {
+      const objResponse = await fetch(`/api/quotes/${strQuoteId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ strStatus: strNewStatus, strNotes }),
+      });
+
+      const objData = await objResponse.json();
+      
+      if (objData.success) {
+        // Reload quotes
+        const objQuotesResponse = await fetch('/api/quotes');
+        const objQuotesData = await objQuotesResponse.json();
+        if (objQuotesData.success) {
+          setArrQuotes(objQuotesData.quotes);
+        }
+      } else {
+        setStrError(objData.message || 'Failed to update quote status');
+      }
+    } catch (error) {
+      setStrError('Error updating quote status');
+    }
+  };
+
   if (bIsLoading) {
     return (
       <div className="min-h-screen bg-gray-50 p-8">
@@ -276,6 +304,23 @@ export default function QuotesPage() {
                   <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors">
                     Edit
                   </button>
+                )}
+                {/* Approval buttons - only for Super Admin and Provider User */}
+                {objUser && fnHasPermission(objUser.strRole, 'quote:manage') && objQuote.strStatus === 'sent' && (
+                  <>
+                    <button 
+                      onClick={() => fnUpdateQuoteStatus(objQuote.strQuoteId, 'approved', 'Quote approved')}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
+                    >
+                      Approve
+                    </button>
+                    <button 
+                      onClick={() => fnUpdateQuoteStatus(objQuote.strQuoteId, 'rejected', 'Quote rejected')}
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
+                    >
+                      Reject
+                    </button>
+                  </>
                 )}
               </div>
             </div>

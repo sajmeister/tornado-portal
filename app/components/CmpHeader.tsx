@@ -92,6 +92,16 @@ export default function CmpHeader({ objUser, onLogout }: CmpHeaderProps) {
                   </button>
                 )}
                 
+                {/* Orders - only visible if user has order:manage or order:view permission */}
+                {(fnHasPermission(objUser.strRole, 'order:manage') || fnHasPermission(objUser.strRole, 'order:view')) && (
+                  <button
+                    onClick={() => router.push('/orders')}
+                    className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                  >
+                    Orders
+                  </button>
+                )}
+                
                 {/* Roles - only visible if user has user:manage permission (Super Admin) */}
                 {fnHasPermission(objUser.strRole, 'user:manage') && (
                   <button

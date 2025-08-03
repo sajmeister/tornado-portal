@@ -144,7 +144,10 @@ export default function DashboardPage() {
                 
                 {/* Orders - only visible if user has order:manage or order:view permission */}
                 {(fnHasPermission(objUser.strRole, 'order:manage') || fnHasPermission(objUser.strRole, 'order:view')) && (
-                  <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-md text-sm font-medium">
+                  <button 
+                    onClick={() => router.push('/orders')}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-md text-sm font-medium"
+                  >
                     View Orders
                   </button>
                 )}
