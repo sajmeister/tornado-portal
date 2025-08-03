@@ -419,25 +419,12 @@ export default function ProductsPage() {
                       {fnCanManageProducts(objUser?.strRole || '') ? (
                         <>
                           <div>Base: ${objProduct.decBasePrice?.toFixed(2) || '0.00'}</div>
-                          <div className="text-blue-600">
-                            Partner: ${(objProduct.decDisplayPrice || objProduct.decPartnerPrice || objProduct.decBasePrice)?.toFixed(2) || '0.00'}
-                          </div>
-                          {objProduct.decDiscountRate && (
-                            <div className="text-xs text-green-600">
-                              {objProduct.decDiscountRate}% discount
-                            </div>
-                          )}
                         </>
                       ) : (
                         <>
                           <div className="text-lg font-semibold text-blue-600">
                             ${(objProduct.decDisplayPrice || objProduct.decPartnerPrice || objProduct.decBasePrice)?.toFixed(2) || '0.00'}
                           </div>
-                          {objProduct.decDiscountRate && (
-                            <div className="text-xs text-green-600">
-                              {objProduct.decDiscountRate}% partner discount applied
-                            </div>
-                          )}
                         </>
                       )}
                     </td>
