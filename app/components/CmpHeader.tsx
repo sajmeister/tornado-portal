@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { fnHasPermission } from '../../src/lib/roles';
+import CmpNotifications from './CmpNotifications';
 
 interface IUser {
   strUserId: string;
@@ -133,6 +134,7 @@ export default function CmpHeader({ objUser, onLogout }: CmpHeaderProps) {
                 )}
               </div>
               <div className="flex items-center space-x-4">
+                <CmpNotifications />
                 <span className="text-gray-700 text-sm">
                   Welcome, {objUser.strName}
                 </span>

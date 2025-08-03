@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { fnHasPermission } from '../../src/lib/roles';
+import { fnNotifyOrderStatusChange, fnNotifyOrderCreated, fnNotifyQuoteConverted } from '../../src/lib/notifications';
 import CmpHeader from '../components/CmpHeader';
 
 interface IProduct {
@@ -93,7 +94,9 @@ export default function OrdersPage() {
   const [objUser, setObjUser] = useState<IUser | null>(null);
   const [bIsLoading, setIsLoading] = useState(true);
   const [bShowConvertModal, setBShowConvertModal] = useState(false);
+  const [bShowOrderDetailsModal, setBShowOrderDetailsModal] = useState(false);
   const [objSelectedQuote, setObjSelectedQuote] = useState<IQuote | null>(null);
+  const [objSelectedOrder, setObjSelectedOrder] = useState<IOrder | null>(null);
   const [bIsConverting, setIsConverting] = useState(false);
   const [strError, setStrError] = useState('');
   const router = useRouter();
@@ -184,6 +187,11 @@ export default function OrdersPage() {
   const fnConvertQuoteToOrder = async (strQuoteId: string) => {
     try {
       setIsConverting(true);
+      
+      // Find the quote to get its number
+      const objQuote = arrQuotes.find(quote => quote.strQuoteId === strQuoteId);
+      const strQuoteNumber = objQuote?.strQuoteNumber || '';
+
       const objResponse = await fetch('/api/orders/convert', {
         method: 'POST',
         headers: {
@@ -195,6 +203,10 @@ export default function OrdersPage() {
       const objData = await objResponse.json();
       
       if (objData.success) {
+        // Send notification for quote conversion
+        const strOrderNumber = objData.order?.strOrderNumber || 'new order';
+        fnNotifyQuoteConverted(strQuoteNumber, strOrderNumber);
+        
         // Reload orders
         const objOrdersResponse = await fetch('/api/orders');
         const objOrdersData = await objOrdersResponse.json();
@@ -226,6 +238,11 @@ export default function OrdersPage() {
 
   const fnUpdateOrderStatus = async (strOrderId: string, strNewStatus: string, strNotes?: string) => {
     try {
+      // Find the current order to get its status and number
+      const objCurrentOrder = arrOrders.find(order => order.strOrderId === strOrderId);
+      const strOldStatus = objCurrentOrder?.strStatus || 'unknown';
+      const strOrderNumber = objCurrentOrder?.strOrderNumber || '';
+
       const objResponse = await fetch(`/api/orders/${strOrderId}/status`, {
         method: 'PUT',
         headers: {
@@ -237,6 +254,9 @@ export default function OrdersPage() {
       const objData = await objResponse.json();
       
       if (objData.success) {
+        // Send notification for status change
+        fnNotifyOrderStatusChange(strOrderNumber, strOldStatus, strNewStatus);
+        
         // Reload orders
         const objOrdersResponse = await fetch('/api/orders');
         const objOrdersData = await objOrdersResponse.json();
@@ -255,10 +275,18 @@ export default function OrdersPage() {
     switch (strStatus.toLowerCase()) {
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
-      case 'processing':
+      case 'confirmed':
         return 'bg-blue-100 text-blue-800';
-      case 'shipped':
+      case 'processing':
+        return 'bg-indigo-100 text-indigo-800';
+      case 'provisioning':
         return 'bg-purple-100 text-purple-800';
+      case 'testing':
+        return 'bg-orange-100 text-orange-800';
+      case 'ready':
+        return 'bg-teal-100 text-teal-800';
+      case 'shipped':
+        return 'bg-pink-100 text-pink-800';
       case 'delivered':
         return 'bg-green-100 text-green-800';
       case 'cancelled':
@@ -272,8 +300,16 @@ export default function OrdersPage() {
     switch (strStatus.toLowerCase()) {
       case 'pending':
         return 'Pending';
+      case 'confirmed':
+        return 'Confirmed';
       case 'processing':
         return 'Processing';
+      case 'provisioning':
+        return 'Provisioning';
+      case 'testing':
+        return 'Testing';
+      case 'ready':
+        return 'Ready';
       case 'shipped':
         return 'Shipped';
       case 'delivered':
@@ -283,6 +319,20 @@ export default function OrdersPage() {
       default:
         return strStatus;
     }
+  };
+
+  // Get order processing step number for progress indicator
+  const fnGetOrderStepNumber = (strStatus: string): number => {
+    const arrStatusOrder = [
+      'pending', 'confirmed', 'processing', 'provisioning', 'testing', 'ready', 'shipped', 'delivered'
+    ];
+    const intStepIndex = arrStatusOrder.indexOf(strStatus.toLowerCase());
+    return intStepIndex >= 0 ? intStepIndex + 1 : 0;
+  };
+
+  // Get total number of steps for progress calculation
+  const fnGetTotalSteps = (): number => {
+    return 8; // pending, confirmed, processing, provisioning, testing, ready, shipped, delivered
   };
 
   if (bIsLoading) {
@@ -425,9 +475,22 @@ export default function OrdersPage() {
                       {objOrder.strPartnerName}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${fnGetStatusColor(objOrder.strStatus)}`}>
-                        {fnGetStatusDisplayName(objOrder.strStatus)}
-                      </span>
+                      <div className="space-y-2">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${fnGetStatusColor(objOrder.strStatus)}`}>
+                          {fnGetStatusDisplayName(objOrder.strStatus)}
+                        </span>
+                        {/* Progress Indicator */}
+                        {!['cancelled', 'delivered'].includes(objOrder.strStatus.toLowerCase()) && (
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                              style={{ 
+                                width: `${(fnGetOrderStepNumber(objOrder.strStatus) / fnGetTotalSteps()) * 100}%` 
+                              }}
+                            ></div>
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       <div className="font-semibold">${objOrder.decTotal.toFixed(2)}</div>
@@ -442,25 +505,58 @@ export default function OrdersPage() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
                           onClick={() => {
-                            // TODO: Implement order details modal
-                            alert('Order details modal - to be implemented');
+                            setObjSelectedOrder(objOrder);
+                            setBShowOrderDetailsModal(true);
                           }}
                           className="text-blue-600 hover:text-blue-900 mr-4"
                         >
                           View Details
                         </button>
+                        {/* Enhanced Status Update Buttons */}
                         {objOrder.strStatus === 'pending' && (
                           <button
+                            onClick={() => fnUpdateOrderStatus(objOrder.strOrderId, 'confirmed')}
+                            className="text-blue-600 hover:text-blue-900 mr-2"
+                          >
+                            Confirm
+                          </button>
+                        )}
+                        {objOrder.strStatus === 'confirmed' && (
+                          <button
                             onClick={() => fnUpdateOrderStatus(objOrder.strOrderId, 'processing')}
-                            className="text-green-600 hover:text-green-900 mr-4"
+                            className="text-indigo-600 hover:text-indigo-900 mr-2"
                           >
                             Start Processing
                           </button>
                         )}
                         {objOrder.strStatus === 'processing' && (
                           <button
+                            onClick={() => fnUpdateOrderStatus(objOrder.strOrderId, 'provisioning')}
+                            className="text-purple-600 hover:text-purple-900 mr-2"
+                          >
+                            Start Provisioning
+                          </button>
+                        )}
+                        {objOrder.strStatus === 'provisioning' && (
+                          <button
+                            onClick={() => fnUpdateOrderStatus(objOrder.strOrderId, 'testing')}
+                            className="text-orange-600 hover:text-orange-900 mr-2"
+                          >
+                            Start Testing
+                          </button>
+                        )}
+                        {objOrder.strStatus === 'testing' && (
+                          <button
+                            onClick={() => fnUpdateOrderStatus(objOrder.strOrderId, 'ready')}
+                            className="text-teal-600 hover:text-teal-900 mr-2"
+                          >
+                            Mark Ready
+                          </button>
+                        )}
+                        {objOrder.strStatus === 'ready' && (
+                          <button
                             onClick={() => fnUpdateOrderStatus(objOrder.strOrderId, 'shipped')}
-                            className="text-purple-600 hover:text-purple-900 mr-4"
+                            className="text-pink-600 hover:text-pink-900 mr-2"
                           >
                             Mark Shipped
                           </button>
@@ -468,12 +564,13 @@ export default function OrdersPage() {
                         {objOrder.strStatus === 'shipped' && (
                           <button
                             onClick={() => fnUpdateOrderStatus(objOrder.strOrderId, 'delivered')}
-                            className="text-green-600 hover:text-green-900 mr-4"
+                            className="text-green-600 hover:text-green-900 mr-2"
                           >
                             Mark Delivered
                           </button>
                         )}
-                        {['pending', 'processing'].includes(objOrder.strStatus.toLowerCase()) && (
+                        {/* Cancel button for orders that can still be cancelled */}
+                        {['pending', 'confirmed', 'processing', 'provisioning', 'testing'].includes(objOrder.strStatus.toLowerCase()) && (
                           <button
                             onClick={() => fnUpdateOrderStatus(objOrder.strOrderId, 'cancelled')}
                             className="text-red-600 hover:text-red-900"
@@ -491,6 +588,23 @@ export default function OrdersPage() {
         </div>
       </div>
 
+      {/* Order Details Modal */}
+      {bShowOrderDetailsModal && objSelectedOrder && (
+        <OrderDetailsModal
+          order={objSelectedOrder}
+          onClose={() => {
+            setBShowOrderDetailsModal(false);
+            setObjSelectedOrder(null);
+          }}
+          onStatusUpdate={fnUpdateOrderStatus}
+          canManageOrders={fnCanManageOrders(objUser?.strRole || '')}
+          getStatusColor={fnGetStatusColor}
+          getStatusDisplayName={fnGetStatusDisplayName}
+          getOrderStepNumber={fnGetOrderStepNumber}
+          getTotalSteps={fnGetTotalSteps}
+        />
+      )}
+
       {/* Convert Quote to Order Modal */}
       {bShowConvertModal && (
         <ConvertQuoteModal
@@ -503,6 +617,274 @@ export default function OrdersPage() {
           isLoading={bIsConverting}
         />
       )}
+    </div>
+  );
+}
+
+// Order Details Modal Component
+function OrderDetailsModal({
+  order,
+  onClose,
+  onStatusUpdate,
+  canManageOrders,
+  getStatusColor,
+  getStatusDisplayName,
+  getOrderStepNumber,
+  getTotalSteps
+}: {
+  order: IOrder;
+  onClose: () => void;
+  onStatusUpdate: (orderId: string, status: string, notes?: string) => void;
+  canManageOrders: boolean;
+  getStatusColor: (status: string) => string;
+  getStatusDisplayName: (status: string) => string;
+  getOrderStepNumber: (status: string) => number;
+  getTotalSteps: () => number;
+}) {
+  const [strNewStatus, setStrNewStatus] = useState('');
+  const [strNotes, setStrNotes] = useState('');
+  const [bIsUpdating, setIsUpdating] = useState(false);
+
+  const arrStatusOptions = [
+    'pending', 'confirmed', 'processing', 'provisioning', 'testing', 'ready', 'shipped', 'delivered', 'cancelled'
+  ];
+
+  const arrProcessingSteps = [
+    { status: 'pending', label: 'Order Pending', description: 'Order received and awaiting confirmation' },
+    { status: 'confirmed', label: 'Order Confirmed', description: 'Order confirmed and ready for processing' },
+    { status: 'processing', label: 'Processing', description: 'Order is being processed and prepared' },
+    { status: 'provisioning', label: 'Provisioning', description: 'Resources are being provisioned' },
+    { status: 'testing', label: 'Testing', description: 'Order is being tested and validated' },
+    { status: 'ready', label: 'Ready', description: 'Order is ready for shipping' },
+    { status: 'shipped', label: 'Shipped', description: 'Order has been shipped' },
+    { status: 'delivered', label: 'Delivered', description: 'Order has been delivered' }
+  ];
+
+  const fnHandleStatusUpdate = async () => {
+    if (!strNewStatus) return;
+    
+    setIsUpdating(true);
+    try {
+      await onStatusUpdate(order.strOrderId, strNewStatus, strNotes);
+      setStrNewStatus('');
+      setStrNotes('');
+    } catch (error) {
+      console.error('Error updating status:', error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold text-gray-900">Order Details</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6">
+          {/* Order Header */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Order Information</h3>
+              <div className="space-y-2 text-sm">
+                <div><span className="font-medium">Order Number:</span> {order.strOrderNumber}</div>
+                <div><span className="font-medium">Partner:</span> {order.strPartnerName}</div>
+                <div><span className="font-medium">Created By:</span> {order.strCreatedByName}</div>
+                <div><span className="font-medium">Created:</span> {new Date(order.dtCreated).toLocaleString()}</div>
+                <div><span className="font-medium">Total:</span> ${order.decTotal.toFixed(2)}</div>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Current Status</h3>
+              <div className="space-y-2">
+                <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${getStatusColor(order.strStatus)}`}>
+                  {getStatusDisplayName(order.strStatus)}
+                </span>
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div 
+                    className="bg-blue-600 h-3 rounded-full transition-all duration-300"
+                    style={{ 
+                      width: `${(getOrderStepNumber(order.strStatus) / getTotalSteps()) * 100}%` 
+                    }}
+                  ></div>
+                </div>
+                <div className="text-xs text-gray-500">
+                  Step {getOrderStepNumber(order.strStatus)} of {getTotalSteps()}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Processing Steps */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-4">Processing Steps</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {arrProcessingSteps.map((step, index) => {
+                const intCurrentStep = getOrderStepNumber(order.strStatus);
+                const bIsCompleted = intCurrentStep > index + 1;
+                const bIsCurrent = intCurrentStep === index + 1;
+                const bIsCancelled = order.strStatus.toLowerCase() === 'cancelled';
+                
+                return (
+                  <div 
+                    key={step.status}
+                    className={`p-4 rounded-lg border-2 ${
+                      bIsCancelled 
+                        ? 'border-red-200 bg-red-50' 
+                        : bIsCompleted 
+                          ? 'border-green-200 bg-green-50' 
+                          : bIsCurrent 
+                            ? 'border-blue-200 bg-blue-50' 
+                            : 'border-gray-200 bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center mb-2">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                        bIsCancelled 
+                          ? 'bg-red-500 text-white' 
+                          : bIsCompleted 
+                            ? 'bg-green-500 text-white' 
+                            : bIsCurrent 
+                              ? 'bg-blue-500 text-white' 
+                              : 'bg-gray-300 text-gray-600'
+                      }`}>
+                        {bIsCompleted ? '✓' : index + 1}
+                      </div>
+                      <span className={`ml-2 font-medium ${
+                        bIsCancelled 
+                          ? 'text-red-700' 
+                          : bIsCompleted 
+                            ? 'text-green-700' 
+                            : bIsCurrent 
+                              ? 'text-blue-700' 
+                              : 'text-gray-500'
+                      }`}>
+                        {step.label}
+                      </span>
+                    </div>
+                    <p className={`text-xs ${
+                      bIsCancelled 
+                        ? 'text-red-600' 
+                        : bIsCompleted 
+                          ? 'text-green-600' 
+                          : bIsCurrent 
+                            ? 'text-blue-600' 
+                            : 'text-gray-400'
+                    }`}>
+                      {step.description}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Order Items */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-4">Order Items</h3>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="space-y-3">
+                {order.arrItems.map((item) => (
+                  <div key={item.strOrderItemId} className="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0">
+                    <div>
+                      <div className="font-medium">{item.strProductName}</div>
+                      <div className="text-sm text-gray-500">{item.strProductCode}</div>
+                      {item.strNotes && <div className="text-xs text-gray-400">{item.strNotes}</div>}
+                    </div>
+                    <div className="text-right">
+                      <div className="font-medium">${item.decLineTotal.toFixed(2)}</div>
+                      <div className="text-sm text-gray-500">Qty: {item.intQuantity}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Status History */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold mb-4">Status History</h3>
+            <div className="space-y-3">
+              {order.arrStatusHistory.slice().reverse().map((history) => (
+                <div key={history.strStatusHistoryId} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                  <div className={`w-3 h-3 rounded-full mt-2 ${getStatusColor(history.strStatus).replace('bg-', 'bg-').replace(' text-', '')}`}></div>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(history.strStatus)}`}>
+                          {getStatusDisplayName(history.strStatus)}
+                        </span>
+                        <div className="text-sm text-gray-600 mt-1">{history.strNotes}</div>
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {new Date(history.dtCreated).toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Status Update Section - Only for users who can manage orders */}
+          {canManageOrders && (
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-semibold mb-4">Update Status</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    New Status
+                  </label>
+                  <select
+                    value={strNewStatus}
+                    onChange={(e) => setStrNewStatus(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select a status</option>
+                    {arrStatusOptions.map((status) => (
+                      <option key={status} value={status}>
+                        {getStatusDisplayName(status)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Notes (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={strNotes}
+                    onChange={(e) => setStrNotes(e.target.value)}
+                    placeholder="Add notes about this status change"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <div className="mt-4">
+                <button
+                  onClick={fnHandleStatusUpdate}
+                  disabled={!strNewStatus || bIsUpdating}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  {bIsUpdating ? 'Updating...' : 'Update Status'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

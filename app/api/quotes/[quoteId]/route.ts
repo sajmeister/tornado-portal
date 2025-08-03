@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/src/lib/db';
-import { tblQuotes, tblUsers } from '@/src/lib/db/schema';
+import { tblQuotes, tblUsers, tblQuoteItems } from '@/src/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { fnHasPermission } from '@/src/lib/roles';
 
@@ -108,6 +108,93 @@ export async function PUT(
 
   } catch (error) {
     console.error('Error updating quote status:', error);
+    return NextResponse.json({
+      success: false,
+      message: 'Internal server error'
+    }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ quoteId: string }> }
+) {
+  try {
+    // Get user info from middleware headers
+    const strUserId = request.headers.get('x-user-id');
+    
+    if (!strUserId) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
+    }
+    
+    // Type assertion since we've already checked for null
+    const strUserIdNonNull = strUserId as string;
+
+    // Get user details
+    const arrUsers = await db.select().from(tblUsers).where(eq(tblUsers.strUserId, strUserIdNonNull));
+    if (arrUsers.length === 0) {
+      return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
+    }
+
+    const objUser = arrUsers[0];
+
+    const { quoteId: strQuoteId } = await params;
+
+    // Get the quote and verify it exists
+    const arrQuotes = await db.select().from(tblQuotes).where(eq(tblQuotes.strQuoteId, strQuoteId));
+    if (arrQuotes.length === 0) {
+      return NextResponse.json({
+        success: false,
+        message: 'Quote not found'
+      }, { status: 404 });
+    }
+
+    const objQuote = arrQuotes[0];
+
+    // Check if quote is active
+    if (!objQuote.bIsActive) {
+      return NextResponse.json({
+        success: false,
+        message: 'Quote is not active'
+      }, { status: 400 });
+    }
+
+    // Only allow deletion of draft quotes
+    if (objQuote.strStatus.toLowerCase() !== 'draft') {
+      return NextResponse.json({
+        success: false,
+        message: 'Only draft quotes can be deleted'
+      }, { status: 400 });
+    }
+
+    // Check permissions - only quote creator or Super Admin/Provider User can delete
+    const arrAllowedRoles = ['super_admin', 'provider_user'];
+    const bCanDelete = arrAllowedRoles.includes(objUser.strRole || '') || objQuote.strCreatedBy === strUserIdNonNull;
+    
+    if (!bCanDelete) {
+      return NextResponse.json({
+        success: false,
+        message: 'Access denied. You can only delete quotes you created, or you need Super Admin/Provider User permissions.'
+      }, { status: 403 });
+    }
+
+    // Delete quote items first (due to foreign key constraint)
+    await db
+      .delete(tblQuoteItems)
+      .where(eq(tblQuoteItems.strQuoteId, strQuoteId));
+
+    // Delete the quote
+    await db
+      .delete(tblQuotes)
+      .where(eq(tblQuotes.strQuoteId, strQuoteId));
+
+    return NextResponse.json({
+      success: true,
+      message: 'Quote deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Error deleting quote:', error);
     return NextResponse.json({
       success: false,
       message: 'Internal server error'

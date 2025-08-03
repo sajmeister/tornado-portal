@@ -73,6 +73,8 @@ export default function QuotesPage() {
   const [bIsLoading, setIsLoading] = useState(true);
   const [bIsCreating, setIsCreating] = useState(false);
   const [bShowCreateModal, setBShowCreateModal] = useState(false);
+  const [bShowQuoteDetailsModal, setBShowQuoteDetailsModal] = useState(false);
+  const [objSelectedQuote, setObjSelectedQuote] = useState<IQuote | null>(null);
   const [strError, setStrError] = useState('');
   const router = useRouter();
 
@@ -122,6 +124,7 @@ export default function QuotesPage() {
         const objProductsData = await objProductsResponse.json();
         
         if (objQuotesData.success) {
+          console.log('📊 Quotes loaded:', objQuotesData.quotes);
           setArrQuotes(objQuotesData.quotes);
         } else {
           setStrError('Failed to load quotes');
@@ -191,13 +194,15 @@ export default function QuotesPage() {
   };
 
   const fnGetStatusColor = (strStatus: string): string => {
+    if (!strStatus) return 'bg-gray-200 text-gray-900 border border-gray-300';
+    
     switch (strStatus.toLowerCase()) {
-      case 'draft': return 'bg-gray-100 text-gray-800';
-      case 'sent': return 'bg-blue-100 text-blue-800';
-      case 'approved': return 'bg-green-100 text-green-800';
-      case 'rejected': return 'bg-red-100 text-red-800';
-      case 'expired': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'draft': return 'bg-gray-200 text-gray-900 border border-gray-400';
+      case 'sent': return 'bg-blue-200 text-blue-900 border border-blue-400';
+      case 'approved': return 'bg-green-200 text-green-900 border border-green-400';
+      case 'rejected': return 'bg-red-200 text-red-900 border border-red-400';
+      case 'expired': return 'bg-yellow-200 text-yellow-900 border border-yellow-400';
+      default: return 'bg-gray-200 text-gray-900 border border-gray-300';
     }
   };
 
@@ -225,6 +230,36 @@ export default function QuotesPage() {
       }
     } catch (error) {
       setStrError('Error updating quote status');
+    }
+  };
+
+  const fnDeleteQuote = async (strQuoteId: string) => {
+    if (!confirm('Are you sure you want to delete this quote? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const objResponse = await fetch(`/api/quotes/${strQuoteId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const objData = await objResponse.json();
+      
+      if (objData.success) {
+        // Reload quotes
+        const objQuotesResponse = await fetch('/api/quotes');
+        const objQuotesData = await objQuotesResponse.json();
+        if (objQuotesData.success) {
+          setArrQuotes(objQuotesData.quotes);
+        }
+      } else {
+        setStrError(objData.message || 'Failed to delete quote');
+      }
+    } catch (error) {
+      setStrError('Error deleting quote');
     }
   };
 
@@ -290,15 +325,44 @@ export default function QuotesPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {arrQuotes.map((objQuote) => (
             <div key={objQuote.strQuoteId} className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{objQuote.strQuoteNumber}</h3>
-                  <p className="text-sm text-gray-500">Created {new Date(objQuote.dtCreated).toLocaleDateString()}</p>
-                </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-medium ${fnGetStatusColor(objQuote.strStatus)}`}>
-                  {objQuote.strStatus}
-                </span>
-              </div>
+                             <div className="flex justify-between items-start mb-4">
+                 <div>
+                   <h3 className="text-lg font-semibold text-gray-900">{objQuote.strQuoteNumber}</h3>
+                   <p className="text-sm text-gray-500">Created {new Date(objQuote.dtCreated).toLocaleDateString()}</p>
+                 </div>
+                 <div className="text-right">
+                   <div className="text-xs text-gray-500 mb-1">Status</div>
+                   <div className={`inline-flex items-center px-3 py-2 rounded-lg text-sm font-semibold uppercase tracking-wide ${fnGetStatusColor(objQuote.strStatus)}`}>
+                     {objQuote.strStatus === 'draft' && (
+                       <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                       </svg>
+                     )}
+                     {objQuote.strStatus === 'sent' && (
+                       <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                         <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                         <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                       </svg>
+                     )}
+                     {objQuote.strStatus === 'approved' && (
+                       <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                       </svg>
+                     )}
+                     {objQuote.strStatus === 'rejected' && (
+                       <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                         <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                       </svg>
+                     )}
+                     {objQuote.strStatus === 'expired' && (
+                       <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                       </svg>
+                     )}
+                     {objQuote.strStatus || 'No Status'}
+                   </div>
+                 </div>
+               </div>
               
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
@@ -323,13 +387,33 @@ export default function QuotesPage() {
               </div>
 
               <div className="flex space-x-2">
-                <button className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded text-sm font-medium transition-colors">
+                <button 
+                  onClick={() => {
+                    setObjSelectedQuote(objQuote);
+                    setBShowQuoteDetailsModal(true);
+                  }}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded text-sm font-medium transition-colors"
+                >
                   View Details
                 </button>
                 {objQuote.strStatus === 'draft' && (
-                  <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors">
-                    Edit
-                  </button>
+                  <>
+                    <button 
+                      onClick={() => {
+                        setObjSelectedQuote(objQuote);
+                        setBShowQuoteDetailsModal(true);
+                      }}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
+                    >
+                      Edit
+                    </button>
+                    <button 
+                      onClick={() => fnDeleteQuote(objQuote.strQuoteId)}
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </>
                 )}
                 {/* Approval buttons - only for Super Admin and Provider User */}
                 {objUser && fnHasPermission(objUser.strRole, 'quote:manage') && objQuote.strStatus === 'sent' && (
@@ -383,9 +467,308 @@ export default function QuotesPage() {
           isLoading={bIsCreating}
         />
       )}
-    </div>
+
+      {/* Quote Details Modal */}
+      {bShowQuoteDetailsModal && objSelectedQuote && (
+        <QuoteDetailsModal
+          quote={objSelectedQuote}
+          onClose={() => {
+            setBShowQuoteDetailsModal(false);
+            setObjSelectedQuote(null);
+          }}
+          onStatusUpdate={fnUpdateQuoteStatus}
+          onDelete={fnDeleteQuote}
+          canManageQuotes={objUser ? fnCanManageQuotes(objUser.strRole) : false}
+          getStatusColor={fnGetStatusColor}
+        />
+      )}
+        </div>
   );
 }
+
+// Quote Details Modal Component
+function QuoteDetailsModal({
+  quote,
+  onClose,
+  onStatusUpdate,
+  onDelete,
+  canManageQuotes,
+  getStatusColor
+}: {
+  quote: IQuote;
+  onClose: () => void;
+  onStatusUpdate: (quoteId: string, status: string, notes?: string) => void;
+  onDelete: (quoteId: string) => void;
+  canManageQuotes: boolean;
+  getStatusColor: (status: string) => string;
+}) {
+  const [strNewStatus, setStrNewStatus] = useState(quote.strStatus);
+  const [strStatusNotes, setStrStatusNotes] = useState('');
+  const [bIsUpdating, setIsUpdating] = useState(false);
+
+  const fnHandleStatusUpdate = async () => {
+    if (strNewStatus === quote.strStatus) return;
+    
+    setIsUpdating(true);
+    try {
+      await onStatusUpdate(quote.strQuoteId, strNewStatus, strStatusNotes);
+      onClose();
+    } catch (error) {
+      console.error('Error updating quote status:', error);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const fnGetStatusDisplayName = (strStatus: string): string => {
+    if (!strStatus) return 'No Status';
+    
+    const objStatusMap: { [key: string]: string } = {
+      'draft': 'Draft',
+      'sent': 'Sent',
+      'approved': 'Approved',
+      'rejected': 'Rejected',
+      'expired': 'Expired'
+    };
+    return objStatusMap[strStatus] || strStatus;
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold text-gray-900">Quote Details</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6">
+          {/* Quote Header Information */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Quote Information</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Quote Number</label>
+                  <p className="text-sm text-gray-900 font-mono">{quote.strQuoteNumber}</p>
+                </div>
+                                 <div>
+                   <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                   <div className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold uppercase tracking-wide ${getStatusColor(quote.strStatus)}`}>
+                     {quote.strStatus === 'draft' && (
+                       <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                       </svg>
+                     )}
+                     {quote.strStatus === 'sent' && (
+                       <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                         <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                         <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                       </svg>
+                     )}
+                     {quote.strStatus === 'approved' && (
+                       <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                       </svg>
+                     )}
+                     {quote.strStatus === 'rejected' && (
+                       <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                         <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                       </svg>
+                     )}
+                     {quote.strStatus === 'expired' && (
+                       <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                       </svg>
+                     )}
+                     {fnGetStatusDisplayName(quote.strStatus)}
+                   </div>
+                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Created</label>
+                  <p className="text-sm text-gray-900">{new Date(quote.dtCreated).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Last Updated</label>
+                  <p className="text-sm text-gray-900">{new Date(quote.dtUpdated).toLocaleDateString()}</p>
+                </div>
+                {quote.dtValidUntil && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Valid Until</label>
+                    <p className="text-sm text-gray-900">{new Date(quote.dtValidUntil).toLocaleDateString()}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Financial Summary</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-700">Subtotal:</span>
+                  <span className="text-sm font-medium">${quote.decSubtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-700">Discount:</span>
+                  <span className="text-sm font-medium">${quote.decDiscountAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between border-t pt-2">
+                  <span className="text-sm font-semibold">Total:</span>
+                  <span className="text-sm font-semibold">${quote.decTotal.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quote Items */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quote Items</h3>
+            <div className="bg-gray-50 rounded-lg overflow-hidden">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-100">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Line Total</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {quote.arrItems?.map((item, index) => (
+                    <tr key={item.strQuoteItemId || index}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {item.strProductName}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {item.strProductCode}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {item.intQuantity}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ${item.decUnitPrice.toFixed(2)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        ${item.decLineTotal.toFixed(2)}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900">
+                        {item.strNotes || '-'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Notes */}
+          {quote.strNotes && (
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Notes</h3>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-sm text-gray-900">{quote.strNotes}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Status Update Section - Only for users who can manage quotes */}
+          {canManageQuotes && quote.strStatus === 'sent' && (
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Update Status</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">New Status</label>
+                  <select
+                    value={strNewStatus}
+                    onChange={(e) => setStrNewStatus(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="sent">Sent</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Status Notes</label>
+                  <textarea
+                    value={strStatusNotes}
+                    onChange={(e) => setStrStatusNotes(e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Optional notes about this status change..."
+                  />
+                </div>
+                <div className="flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={fnHandleStatusUpdate}
+                    disabled={bIsUpdating || strNewStatus === quote.strStatus}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {bIsUpdating ? 'Updating...' : 'Update Status'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Delete button for draft quotes */}
+          {canManageQuotes && quote.strStatus === 'draft' && (
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Danger Zone</h3>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                <p className="text-sm text-red-700 mb-4">
+                  Once you delete a quote, there is no going back. Please be certain.
+                </p>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => {
+                      onDelete(quote.strQuoteId);
+                      onClose();
+                    }}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md font-medium transition-colors"
+                  >
+                    Delete Quote
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Close button for non-managers */}
+          {!canManageQuotes && (
+            <div className="border-t border-gray-200 pt-6">
+              <div className="flex justify-end">
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md font-medium transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+} 
 
 // Create Quote Modal Component
 function CreateQuoteModal({ 

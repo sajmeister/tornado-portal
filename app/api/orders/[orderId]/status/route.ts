@@ -47,11 +47,21 @@ export async function PUT(
     }
 
     // Validate status
-    const arrValidStatuses = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
+    const arrValidStatuses = [
+      'pending', 
+      'confirmed', 
+      'processing', 
+      'provisioning', 
+      'testing', 
+      'ready', 
+      'shipped', 
+      'delivered', 
+      'cancelled'
+    ];
     if (!arrValidStatuses.includes(strStatus.toLowerCase())) {
       return NextResponse.json({
         success: false,
-        message: 'Invalid status. Valid statuses are: pending, processing, shipped, delivered, cancelled'
+        message: `Invalid status. Valid statuses are: ${arrValidStatuses.join(', ')}`
       }, { status: 400 });
     }
 
