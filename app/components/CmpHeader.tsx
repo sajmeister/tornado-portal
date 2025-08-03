@@ -111,6 +111,16 @@ export default function CmpHeader({ objUser, onLogout }: CmpHeaderProps) {
                     Partners
                   </button>
                 )}
+                
+                {/* Orphaned Users - only visible for Super Admins */}
+                {fnHasPermission(objUser.strRole, 'user:manage') && (
+                  <button
+                    onClick={() => router.push('/users/orphaned')}
+                    className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                  >
+                    Orphaned Users
+                  </button>
+                )}
               </div>
               <div className="flex items-center space-x-4">
                 <span className="text-gray-700 text-sm">

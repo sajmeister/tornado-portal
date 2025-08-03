@@ -97,12 +97,14 @@ export async function POST(
   try {
     
     // Get user info from middleware headers
+    const strUserId = request.headers.get('x-user-id');
     const strUserRole = request.headers.get('x-user-role');
     
-    if (!strUserRole) {
+    if (!strUserId || !strUserRole) {
       return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
     }
     
+    const strUserIdNonNull = strUserId as string;
     const strUserRoleNonNull = strUserRole as string;
 
     // Check if user has permission to manage partner users
@@ -113,11 +115,31 @@ export async function POST(
       }, { status: 403 });
     }
 
+    // For partner admins, check if they belong to this partner
+    if (strUserRoleNonNull === EUserRole.PARTNER_ADMIN) {
+      const arrPartnerUsers = await db
+        .select()
+        .from(tblPartnerUsers)
+        .where(and(
+          eq(tblPartnerUsers.strUserId, strUserIdNonNull),
+          eq(tblPartnerUsers.strPartnerId, strPartnerId),
+          eq(tblPartnerUsers.bIsActive, true)
+        ))
+        .limit(1);
+
+      if (arrPartnerUsers.length === 0) {
+        return NextResponse.json({ 
+          success: false, 
+          error: 'Access denied. You can only manage users in your own partner organization.' 
+        }, { status: 403 });
+      }
+    }
+
     const objBody = await request.json();
-    const { strUserId, strRole } = objBody;
+    const { strUserId: strTargetUserId, strRole } = objBody;
 
     // Validate required fields
-    if (!strUserId || !strRole) {
+    if (!strTargetUserId || !strRole) {
       return NextResponse.json({ 
         success: false, 
         error: 'User ID and role are required' 
@@ -153,7 +175,7 @@ export async function POST(
     const arrUser = await db
       .select()
       .from(tblUsers)
-      .where(eq(tblUsers.strUserId, strUserId))
+      .where(eq(tblUsers.strUserId, strTargetUserId))
       .limit(1);
 
     if (arrUser.length === 0) {
@@ -168,7 +190,7 @@ export async function POST(
       .select()
       .from(tblPartnerUsers)
       .where(and(
-        eq(tblPartnerUsers.strUserId, strUserId),
+        eq(tblPartnerUsers.strUserId, strTargetUserId),
         eq(tblPartnerUsers.strPartnerId, strPartnerId),
         eq(tblPartnerUsers.bIsActive, true)
       ))
@@ -189,7 +211,7 @@ export async function POST(
       .insert(tblPartnerUsers)
       .values({
         strPartnerUserId,
-        strUserId,
+        strUserId: strTargetUserId,
         strPartnerId,
         strRole,
         dtCreated: dtNow,

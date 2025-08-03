@@ -41,9 +41,21 @@ export default function PartnerUsersPage() {
   const [objPartner, setObjPartner] = useState<IPartner | null>(null);
   const [bIsLoading, setIsLoading] = useState(true);
   const [strError, setStrError] = useState('');
-  const [bShowAddUserModal, setShowAddUserModal] = useState(false);
-  const [strSelectedUserId, setSelectedUserId] = useState('');
-  const [strSelectedRole, setSelectedRole] = useState('partner_user');
+  const [bShowCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [bShowEditUserModal, setShowEditUserModal] = useState(false);
+  
+  // New user form state
+  const [objNewUser, setObjNewUser] = useState({
+    strUsername: '',
+    strEmail: '',
+    strName: '',
+    strPassword: '',
+    strRole: 'partner_user'
+  });
+
+  // Edit user form state
+  const [objEditingUser, setObjEditingUser] = useState<IPartnerUser | null>(null);
+  const [strEditingRole, setEditingRole] = useState('partner_user');
   const router = useRouter();
   const params = useParams();
   const strPartnerId = params.partnerId as string;
@@ -104,37 +116,135 @@ export default function PartnerUsersPage() {
     }
   };
 
-  const fnHandleAddUser = async () => {
+
+
+
+
+  const fnHandleCreateUser = async () => {
+    // Validate required fields
+    if (!objNewUser.strUsername || !objNewUser.strEmail || !objNewUser.strName || !objNewUser.strPassword) {
+      setStrError('All fields are required');
+      return;
+    }
+
     try {
-      const objResponse = await fetch(`/api/partners/${strPartnerId}/users`, {
+      // First create the user
+      const objCreateUserResponse = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          strUserId: strSelectedUserId,
-          strRole: strSelectedRole,
+          strUsername: objNewUser.strUsername,
+          strEmail: objNewUser.strEmail,
+          strName: objNewUser.strName,
+          strPassword: objNewUser.strPassword,
+          strRole: objNewUser.strRole,
+        }),
+      });
+
+      const objCreateUserData = await objCreateUserResponse.json();
+
+      if (objCreateUserData.success) {
+        // Then add the user to the partner
+        const objAddToPartnerResponse = await fetch(`/api/partners/${strPartnerId}/users`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            strUserId: objCreateUserData.user.strUserId,
+            strRole: objNewUser.strRole,
+          }),
+        });
+
+        const objAddToPartnerData = await objAddToPartnerResponse.json();
+
+        if (objAddToPartnerData.success) {
+          setShowCreateUserModal(false);
+          setObjNewUser({
+            strUsername: '',
+            strEmail: '',
+            strName: '',
+            strPassword: '',
+            strRole: 'partner_user'
+          });
+                  setStrError(''); // Clear any previous errors
+        fnLoadPartnerUsers(); // Refresh the list
+        } else {
+          setStrError(objAddToPartnerData.error || 'Failed to add new user to partner');
+        }
+      } else {
+        setStrError(objCreateUserData.error || 'Failed to create user');
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      setStrError('Failed to create user');
+    }
+  };
+
+  const fnHandleInputChange = (strField: string, strValue: string) => {
+    setObjNewUser(prev => ({
+      ...prev,
+      [strField]: strValue
+    }));
+  };
+
+  const fnHandleEditUser = (objPartnerUser: IPartnerUser) => {
+    setObjEditingUser(objPartnerUser);
+    setEditingRole(objPartnerUser.strRole);
+    setShowEditUserModal(true);
+  };
+
+  const fnHandleUpdateUser = async () => {
+    if (!objEditingUser) return;
+
+    // Check if this is the last admin trying to change their role to user
+    if (objEditingUser.strUserId === objUser?.strUserId && 
+        objEditingUser.strRole === 'partner_admin' && 
+        strEditingRole === 'partner_user') {
+      
+      // Count how many admins exist for this partner
+      const arrAdmins = arrPartnerUsers.filter(user => 
+        user.strRole === 'partner_admin' && user.strUserId !== objEditingUser.strUserId
+      );
+      
+      if (arrAdmins.length === 0) {
+        setStrError('Cannot change your role to Partner User. You are the only administrator for this organization. At least one administrator must remain.');
+        return;
+      }
+    }
+
+    try {
+      const objResponse = await fetch(`/api/partners/${strPartnerId}/users/${objEditingUser.strPartnerUserId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          strRole: strEditingRole,
         }),
       });
 
       const objData = await objResponse.json();
 
       if (objData.success) {
-        setShowAddUserModal(false);
-        setSelectedUserId('');
-        setSelectedRole('partner_user');
+        setShowEditUserModal(false);
+        setObjEditingUser(null);
+        setEditingRole('partner_user');
+        setStrError(''); // Clear any previous errors
         fnLoadPartnerUsers(); // Refresh the list
       } else {
-        setStrError(objData.error || 'Failed to add user to partner');
+        setStrError(objData.error || 'Failed to update user role');
       }
     } catch (error) {
-      console.error('Error adding user to partner:', error);
-      setStrError('Failed to add user to partner');
+      console.error('Error updating user role:', error);
+      setStrError('Failed to update user role');
     }
   };
 
   const fnHandleRemoveUser = async (strPartnerUserId: string) => {
-    if (!confirm('Are you sure you want to remove this user from the partner?')) {
+    if (!confirm('Are you sure you want to remove this user from this partner organization? The user account will remain in the system but will no longer have access to this partner.')) {
       return;
     }
 
@@ -185,7 +295,7 @@ export default function PartnerUsersPage() {
           return;
         }
 
-        // Load partner and partner users
+        // Load partner, partner users, and all users
         await Promise.all([
           fnLoadPartner(),
           fnLoadPartnerUsers()
@@ -259,14 +369,16 @@ export default function PartnerUsersPage() {
               </p>
             </div>
             
-            {/* Add User Button */}
+            {/* Action Buttons */}
             {objUser && fnCanManagePartnerUsers(objUser.strRole) && (
-              <button
-                onClick={() => setShowAddUserModal(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-              >
-                Add User
-              </button>
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => setShowCreateUserModal(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                >
+                  Create New User
+                </button>
+              </div>
             )}
           </div>
 
@@ -308,17 +420,26 @@ export default function PartnerUsersPage() {
                         </div>
                       </div>
                       
-                      {/* Action Buttons */}
-                      {objUser && fnCanManagePartnerUsers(objUser.strRole) && (
-                        <div className="ml-4 flex-shrink-0">
-                          <button
-                            onClick={() => fnHandleRemoveUser(objPartnerUser.strPartnerUserId)}
-                            className="text-red-600 hover:text-red-900 text-sm font-medium"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      )}
+                                             {/* Action Buttons */}
+                       {objUser && fnCanManagePartnerUsers(objUser.strRole) && (
+                         <div className="ml-4 flex-shrink-0 flex space-x-2">
+                           <button
+                             onClick={() => fnHandleEditUser(objPartnerUser)}
+                             className="text-blue-600 hover:text-blue-900 text-sm font-medium"
+                           >
+                             Edit
+                           </button>
+                           {/* Only show Remove button if user is not removing themselves */}
+                           {objUser.strUserId !== objPartnerUser.strUserId && (
+                             <button
+                               onClick={() => fnHandleRemoveUser(objPartnerUser.strPartnerUserId)}
+                               className="text-red-600 hover:text-red-900 text-sm font-medium"
+                             >
+                               Remove from Partner
+                             </button>
+                           )}
+                         </div>
+                       )}
                     </div>
                   </li>
                 ))}
@@ -328,61 +449,169 @@ export default function PartnerUsersPage() {
         </div>
       </div>
 
-      {/* Add User Modal */}
-      {bShowAddUserModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Add User to Partner</h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">User ID</label>
-                  <input
-                    type="text"
-                    value={strSelectedUserId}
-                    onChange={(e) => setSelectedUserId(e.target.value)}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                    placeholder="Enter user ID"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Role</label>
-                  <select
-                    value={strSelectedRole}
-                    onChange={(e) => setSelectedRole(e.target.value)}
-                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
-                  >
-                    <option value="partner_user">Partner User</option>
-                    <option value="partner_admin">Partner Admin</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div className="flex justify-end space-x-3 mt-6">
-                <button
-                  onClick={() => {
-                    setShowAddUserModal(false);
-                    setSelectedUserId('');
-                    setSelectedRole('partner_user');
-                  }}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={fnHandleAddUser}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md"
-                >
-                  Add User
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-} 
+
+
+       {/* Create New User Modal */}
+       {bShowCreateUserModal && (
+         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+             <div className="mt-3">
+               <h3 className="text-lg font-medium text-gray-900 mb-4">Create New User</h3>
+               
+               {strError && (
+                 <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-3">
+                   <div className="text-sm text-red-700">{strError}</div>
+                 </div>
+               )}
+               
+               <div className="space-y-4">
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700">Username</label>
+                   <input
+                     type="text"
+                     value={objNewUser.strUsername}
+                     onChange={(e) => fnHandleInputChange('strUsername', e.target.value)}
+                     className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                     placeholder="Enter username"
+                     required
+                   />
+                 </div>
+                 
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700">Email</label>
+                   <input
+                     type="email"
+                     value={objNewUser.strEmail}
+                     onChange={(e) => fnHandleInputChange('strEmail', e.target.value)}
+                     className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                     placeholder="Enter email"
+                     required
+                   />
+                 </div>
+                 
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700">Full Name</label>
+                   <input
+                     type="text"
+                     value={objNewUser.strName}
+                     onChange={(e) => fnHandleInputChange('strName', e.target.value)}
+                     className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                     placeholder="Enter full name"
+                     required
+                   />
+                 </div>
+                 
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700">Password</label>
+                   <input
+                     type="password"
+                     value={objNewUser.strPassword}
+                     onChange={(e) => fnHandleInputChange('strPassword', e.target.value)}
+                     className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                     placeholder="Enter password"
+                     required
+                   />
+                 </div>
+                 
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700">Role</label>
+                   <select
+                     value={objNewUser.strRole}
+                     onChange={(e) => fnHandleInputChange('strRole', e.target.value)}
+                     className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                   >
+                     <option value="partner_user">Partner User</option>
+                     <option value="partner_admin">Partner Admin</option>
+                   </select>
+                 </div>
+               </div>
+               
+               <div className="flex justify-end space-x-3 mt-6">
+                 <button
+                   onClick={() => {
+                     setShowCreateUserModal(false);
+                     setObjNewUser({
+                       strUsername: '',
+                       strEmail: '',
+                       strName: '',
+                       strPassword: '',
+                       strRole: 'partner_user'
+                     });
+                     setStrError('');
+                   }}
+                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+                 >
+                   Cancel
+                 </button>
+                 <button
+                   onClick={fnHandleCreateUser}
+                   className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md"
+                 >
+                   Create User
+                 </button>
+               </div>
+             </div>
+           </div>
+         </div>
+       )}
+
+       {/* Edit User Modal */}
+       {bShowEditUserModal && objEditingUser && (
+         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+             <div className="mt-3">
+               <h3 className="text-lg font-medium text-gray-900 mb-4">Edit User Role</h3>
+               
+               {strError && (
+                 <div className="mb-4 bg-red-50 border border-red-200 rounded-md p-3">
+                   <div className="text-sm text-red-700">{strError}</div>
+                 </div>
+               )}
+               
+               <div className="space-y-4">
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700">User</label>
+                   <div className="mt-1 p-2 bg-gray-50 border border-gray-300 rounded-md text-sm">
+                     {objEditingUser.strName} ({objEditingUser.strEmail})
+                   </div>
+                 </div>
+                 
+                 <div>
+                   <label className="block text-sm font-medium text-gray-700">Role</label>
+                   <select
+                     value={strEditingRole}
+                     onChange={(e) => setEditingRole(e.target.value)}
+                     className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                   >
+                     <option value="partner_user">Partner User</option>
+                     <option value="partner_admin">Partner Admin</option>
+                   </select>
+                 </div>
+               </div>
+               
+               <div className="flex justify-end space-x-3 mt-6">
+                 <button
+                   onClick={() => {
+                     setShowEditUserModal(false);
+                     setObjEditingUser(null);
+                     setEditingRole('partner_user');
+                     setStrError('');
+                   }}
+                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"
+                 >
+                   Cancel
+                 </button>
+                 <button
+                   onClick={fnHandleUpdateUser}
+                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md"
+                 >
+                   Update Role
+                 </button>
+               </div>
+             </div>
+           </div>
+         </div>
+       )}
+     </div>
+   );
+ } 

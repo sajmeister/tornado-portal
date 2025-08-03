@@ -57,7 +57,9 @@ export const objRoleDefinitions: Record<EUserRole, IRoleDefinition> = {
     strDisplayName: 'Partner Admin',
     strDescription: 'Partner company administrator with team management',
     arrPermissions: [
-      { strPermission: 'user:manage', strDescription: 'Manage partner users', bIsGranted: true },
+      { strPermission: 'user:create', strDescription: 'Create new users for own partner', bIsGranted: true },
+      { strPermission: 'user:manage', strDescription: 'Manage users within own partner organization', bIsGranted: true },
+      { strPermission: 'user:view', strDescription: 'View users within own partner organization', bIsGranted: true },
       { strPermission: 'partner:view', strDescription: 'View own partner info', bIsGranted: true },
       { strPermission: 'product:view', strDescription: 'View products', bIsGranted: true },
       { strPermission: 'quote:manage', strDescription: 'Manage partner quotes', bIsGranted: true },
@@ -70,9 +72,7 @@ export const objRoleDefinitions: Record<EUserRole, IRoleDefinition> = {
     strDisplayName: 'Partner User',
     strDescription: 'Partner company user with quote and order access',
     arrPermissions: [
-      { strPermission: 'user:view', strDescription: 'View partner users', bIsGranted: true },
-      { strPermission: 'partner:view', strDescription: 'View own partner info', bIsGranted: true },
-      { strPermission: 'product:view', strDescription: 'View products', bIsGranted: true },
+      { strPermission: 'user:view', strDescription: 'View users within own partner organization', bIsGranted: true },
       { strPermission: 'quote:create', strDescription: 'Create quotes', bIsGranted: true },
       { strPermission: 'quote:view', strDescription: 'View own quotes', bIsGranted: true },
       { strPermission: 'order:view', strDescription: 'View own orders', bIsGranted: true },

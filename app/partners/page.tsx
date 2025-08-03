@@ -64,16 +64,25 @@ export default function PartnersPage() {
     strPostalCode: '',
     decDiscountRate: 0,
   });
+  const [strUserPartnerId, setUserPartnerId] = useState<string | null>(null);
   const router = useRouter();
 
   // Check if user has permission to view partners
   const fnCanViewPartners = (strRole: string): boolean => {
-    return ['super_admin', 'provider_user', 'partner_admin', 'partner_user'].includes(strRole);
+    return ['super_admin', 'provider_user', 'partner_admin'].includes(strRole);
   };
 
   // Check if user can manage partners (create/edit/delete)
   const fnCanManagePartners = (strRole: string): boolean => {
     return ['super_admin'].includes(strRole);
+  };
+
+  // Check if user can manage users for a specific partner
+  const fnCanManagePartnerUsers = (strRole: string, strPartnerId: string): boolean => {
+    console.log('Checking permissions:', { strRole, strPartnerId, strUserPartnerId });
+    if (strRole === 'super_admin') return true;
+    if (strRole === 'partner_admin' && strUserPartnerId === strPartnerId) return true;
+    return false;
   };
 
   const handleLogout = async () => {
@@ -103,6 +112,27 @@ export default function PartnersPage() {
     } catch (error) {
       console.error('Error loading partners:', error);
       setStrError('Failed to load partners');
+    }
+  };
+
+  const fnLoadUserPartnerInfo = async () => {
+    if (!objUser || objUser.strRole !== 'partner_admin') return;
+    
+    try {
+      const objResponse = await fetch('/api/auth/me/partner', {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const objData = await objResponse.json();
+      
+      if (objData.success && objData.partner) {
+        console.log('Setting user partner ID:', objData.partner.strPartnerId);
+        setUserPartnerId(objData.partner.strPartnerId);
+      }
+    } catch (error) {
+      console.error('Error loading user partner info:', error);
     }
   };
 
@@ -200,6 +230,9 @@ export default function PartnersPage() {
         // Load partners
         await fnLoadPartners();
 
+        // Load user partner info for Partner Admins
+        await fnLoadUserPartnerInfo();
+
       } catch (error) {
         console.error('Error loading partners:', error);
         setStrError('Failed to load partners');
@@ -210,6 +243,13 @@ export default function PartnersPage() {
 
     fnLoadUserAndPartners();
   }, [router]);
+
+  // Load user partner info when user state changes
+  useEffect(() => {
+    if (objUser && objUser.strRole === 'partner_admin') {
+      fnLoadUserPartnerInfo();
+    }
+  }, [objUser]);
 
   const fnFormatDate = (strDate: string): string => {
     return new Date(strDate).toLocaleDateString();
@@ -355,21 +395,28 @@ export default function PartnersPage() {
                         </div>
                       </div>
                       
-                      {/* Action Buttons - Only for Super Admin */}
-                      {objUser && fnCanManagePartners(objUser.strRole) && (
+                      {/* Action Buttons */}
+                      {objUser && (
                         <div className="ml-4 flex-shrink-0 flex space-x-2">
-                          <button
-                            onClick={() => fnHandleEditPartner(objPartner)}
-                            className="text-blue-600 hover:text-blue-900 text-sm font-medium"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => router.push(`/partners/${objPartner.strPartnerId}/users`)}
-                            className="text-green-600 hover:text-green-900 text-sm font-medium"
-                          >
-                            Manage Users
-                          </button>
+                          {/* Edit button - Only for Super Admin */}
+                          {fnCanManagePartners(objUser.strRole) && (
+                            <button
+                              onClick={() => fnHandleEditPartner(objPartner)}
+                              className="text-blue-600 hover:text-blue-900 text-sm font-medium"
+                            >
+                              Edit
+                            </button>
+                          )}
+                          
+                          {/* Manage Users button - For Super Admin and Partner Admin (own partner) */}
+                          {fnCanManagePartnerUsers(objUser.strRole, objPartner.strPartnerId) && (
+                            <button
+                              onClick={() => router.push(`/partners/${objPartner.strPartnerId}/users`)}
+                              className="text-green-600 hover:text-green-900 text-sm font-medium"
+                            >
+                              Manage Users
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
