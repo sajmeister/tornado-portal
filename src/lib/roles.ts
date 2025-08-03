@@ -73,8 +73,9 @@ export const objRoleDefinitions: Record<EUserRole, IRoleDefinition> = {
     strDescription: 'Partner company customer with quote and order access',
     arrPermissions: [
       { strPermission: 'user:view', strDescription: 'View users within own partner organization', bIsGranted: true },
-      { strPermission: 'quote:create', strDescription: 'Create quotes', bIsGranted: true },
-      { strPermission: 'quote:view', strDescription: 'View own quotes', bIsGranted: true },
+      { strPermission: 'quote:view', strDescription: 'View quotes created for them by their partner', bIsGranted: true },
+      { strPermission: 'quote:accept', strDescription: 'Accept quotes created for them', bIsGranted: true },
+      { strPermission: 'quote:reject', strDescription: 'Reject quotes created for them', bIsGranted: true },
       { strPermission: 'order:view', strDescription: 'View own orders', bIsGranted: true },
     ]
   }

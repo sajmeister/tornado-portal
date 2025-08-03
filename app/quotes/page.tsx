@@ -90,7 +90,17 @@ export default function QuotesPage() {
 
   // Check if user has permission to manage quotes
   const fnCanManageQuotes = (strRole: string): boolean => {
-    return ['super_admin', 'provider_user', 'partner_admin', 'partner_customer'].includes(strRole);
+    return ['super_admin', 'provider_user', 'partner_admin'].includes(strRole);
+  };
+
+  // Check if user can create quotes
+  const fnCanCreateQuotes = (strRole: string): boolean => {
+    return ['super_admin', 'provider_user', 'partner_admin'].includes(strRole);
+  };
+
+  // Check if user can accept/reject quotes (Partner Customers only)
+  const fnCanAcceptRejectQuotes = (strRole: string): boolean => {
+    return strRole === 'partner_customer';
   };
 
   const handleLogout = async () => {
@@ -385,12 +395,14 @@ export default function QuotesPage() {
               }
             </p>
           </div>
-          <button
-            onClick={() => setBShowCreateModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-          >
-            Create Quote
-          </button>
+          {objUser && fnCanCreateQuotes(objUser.strRole) && (
+            <button
+              onClick={() => setBShowCreateModal(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+            >
+              Create Quote
+            </button>
+          )}
         </div>
 
         {/* Quotes Grid */}
@@ -503,17 +515,17 @@ export default function QuotesPage() {
                     </button>
                   </>
                 )}
-                {/* Approval buttons - for Partner users when quote is sent */}
-                {objUser && !fnCanBypassPartnerIsolation(objUser.strRole) && objQuote.strStatus === 'sent' && (
+                {/* Approval buttons - for Partner Customers when quote is sent */}
+                {objUser && fnCanAcceptRejectQuotes(objUser.strRole) && objQuote.strStatus === 'sent' && (
                   <>
                     <button 
-                      onClick={() => fnUpdateQuoteStatus(objQuote.strQuoteId, 'approved', 'Quote approved')}
+                      onClick={() => fnUpdateQuoteStatus(objQuote.strQuoteId, 'approved', 'Quote accepted by customer')}
                       className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
                     >
-                      Approve
+                      Accept
                     </button>
                     <button 
-                      onClick={() => fnUpdateQuoteStatus(objQuote.strQuoteId, 'rejected', 'Quote rejected')}
+                      onClick={() => fnUpdateQuoteStatus(objQuote.strQuoteId, 'rejected', 'Quote rejected by customer')}
                       className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
                     >
                       Reject
@@ -550,13 +562,19 @@ export default function QuotesPage() {
               </svg>
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">No quotes yet</h3>
-            <p className="text-gray-600 mb-6">Get started by creating your first quote</p>
-            <button
-              onClick={() => setBShowCreateModal(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-            >
-              Create Quote
-            </button>
+            {objUser && fnCanCreateQuotes(objUser.strRole) ? (
+              <>
+                <p className="text-gray-600 mb-6">Get started by creating your first quote</p>
+                <button
+                  onClick={() => setBShowCreateModal(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Create Quote
+                </button>
+              </>
+            ) : (
+              <p className="text-gray-600">Quotes created by your partner will appear here for your review</p>
+            )}
           </div>
         )}
       </div>

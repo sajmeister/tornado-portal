@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
     const objUser = arrUsers[0];
 
     // Check if user has permission to create quotes
-    const arrAllowedRoles = ['super_admin', 'provider_user', 'partner_admin', 'partner_customer'];
+    const arrAllowedRoles = ['super_admin', 'provider_user', 'partner_admin'];
     if (!objUser.strRole || !arrAllowedRoles.includes(objUser.strRole)) {
       return NextResponse.json({ success: false, error: 'Insufficient permissions' }, { status: 403 });
     }
@@ -149,10 +149,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'Invalid quote items' }, { status: 400 });
       }
       
-      // For partner customers, validate customer pricing exists but allow any value
-      if (objUser.strRole === 'partner_admin' || objUser.strRole === 'partner_customer') {
+      // For partner admins, validate customer pricing exists but allow any value
+      if (objUser.strRole === 'partner_admin') {
         if (!objItem.decCustomerUnitPrice) {
-          return NextResponse.json({ success: false, error: 'Customer pricing required for partner customers' }, { status: 400 });
+          return NextResponse.json({ success: false, error: 'Customer pricing required for partner admins' }, { status: 400 });
         }
         // Partners can charge more (extra margin) or less (discount) than partner prices - no validation needed
       }

@@ -568,6 +568,13 @@ tornado-portal/
 188. ✅ **UPDATED: Enhanced visual feedback to show extra margin (green) vs discount (orange) indicators**
 189. ✅ **FIXED: Corrected margin calculation logic - now properly shows profit (positive) vs discount (negative)**
 190. ✅ **RENAMED: Changed "Partner User" to "Partner Customer" throughout the codebase for better clarity**
+191. ✅ **MAJOR MILESTONE: Partner Customer Quote Permissions Enhancement Completed!**
+192. ✅ Removed quote creation permission from Partner Customer role
+193. ✅ Updated quotes page to hide "Create Quote" button for Partner Customers
+194. ✅ Added accept/reject functionality for Partner Customers on sent quotes
+195. ✅ Updated API validation to prevent Partner Customers from creating quotes
+196. ✅ Enhanced "No quotes yet" message for Partner Customers
+197. ✅ Updated role permissions to include quote:accept and quote:reject for Partner Customers
 
 ### Next Session Goals:
 1. [x] ✅ **COMPLETED: Partner Product Access Implementation**
