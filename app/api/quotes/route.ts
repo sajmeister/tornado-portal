@@ -57,9 +57,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get quote items for each quote
+    // Get quote items and partner info for each quote
     const arrQuotesWithItems = await Promise.all(
       arrQuotes.map(async (objQuote) => {
+        // Get quote items
         const arrQuoteItems = await db.select({
           strQuoteItemId: tblQuoteItems.strQuoteItemId,
           strProductId: tblQuoteItems.strProductId,
@@ -74,9 +75,20 @@ export async function GET(request: NextRequest) {
         .leftJoin(tblProducts, eq(tblQuoteItems.strProductId, tblProducts.strProductId))
         .where(eq(tblQuoteItems.strQuoteId, objQuote.strQuoteId));
 
+        // Get partner info
+        const arrPartners = await db.select({
+          strPartnerName: tblPartners.strPartnerName,
+          strPartnerCode: tblPartners.strPartnerCode,
+        })
+        .from(tblPartners)
+        .where(eq(tblPartners.strPartnerId, objQuote.strPartnerId));
+
+        const objPartner = arrPartners[0] || { strPartnerName: 'Unknown Partner', strPartnerCode: 'UNK' };
+
         return {
           ...objQuote,
-          arrItems: arrQuoteItems
+          arrItems: arrQuoteItems,
+          objPartner: objPartner
         };
       })
     );

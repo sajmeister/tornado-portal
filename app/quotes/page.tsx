@@ -44,6 +44,10 @@ interface IQuote {
   dtUpdated: string;
   bIsActive: boolean;
   arrItems: IQuoteItem[];
+  objPartner?: {
+    strPartnerName: string;
+    strPartnerCode: string;
+  };
 }
 
 interface IUser {
@@ -387,6 +391,11 @@ export default function QuotesPage() {
                  <div>
                    <h3 className="text-lg font-semibold text-gray-900">{objQuote.strQuoteNumber}</h3>
                    <p className="text-sm text-gray-500">Created {new Date(objQuote.dtCreated).toLocaleDateString()}</p>
+                   {objUser && fnCanBypassPartnerIsolation(objUser.strRole) && objQuote.objPartner && (
+                     <p className="text-sm text-blue-600 font-medium mt-1">
+                       Target: {objQuote.objPartner.strPartnerName}
+                     </p>
+                   )}
                  </div>
                  <div className="text-right">
                    <div className="text-xs text-gray-500 mb-1">Status</div>
