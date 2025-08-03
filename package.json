@@ -1,0 +1,45 @@
+{
+  "name": "temp-next",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:inspect": "node scripts/inspect-db.js",
+    "db:update-users": "node scripts/update-users-table.js",
+    "db:create-user": "node scripts/create-test-user.js",
+    "db:create-roles": "node scripts/create-role-users.js",
+    "db:create-sample-products": "node scripts/create-sample-products.js",
+    "db:create-sample-partners": "node scripts/create-sample-partners.js"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.15.10",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "bcryptjs": "^3.0.2",
+    "dotenv": "^17.2.1",
+    "drizzle-orm": "^0.44.4",
+    "jose": "^6.0.12",
+    "jsonwebtoken": "^9.0.2",
+    "next": "15.4.5",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.4",
+    "eslint": "^9",
+    "eslint-config-next": "15.4.5",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
