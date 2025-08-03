@@ -556,7 +556,7 @@ tornado-portal/
 176. ✅ **MAJOR MILESTONE: Customer Pricing Feature Implementation Completed!**
 177. ✅ Updated database schema to support customer pricing (decCustomerSubtotal, decCustomerUnitPrice, etc.)
 178. ✅ Enhanced quote creation modal to allow partners to set customer prices (discounts)
-179. ✅ Implemented validation to ensure customer prices don't exceed partner prices
+179. ✅ **UPDATED: Removed validation restrictions - partners can now charge more (extra margin) or less (discount) than partner prices**
 180. ✅ Added visual feedback showing partner margin calculations for partner users
 181. ✅ Updated quote creation API to handle both partner and customer pricing
 182. ✅ Enhanced quote interfaces to include customer pricing fields
@@ -564,7 +564,8 @@ tornado-portal/
 184. ✅ Successfully migrated existing quotes to include customer pricing data
 185. ✅ Implemented role-based pricing display (partners see both prices, providers see partner prices)
 186. ✅ Added margin calculation and profit/loss indicators for partner users
-187. ✅ Ensured provider always gets paid the full partner price regardless of customer discounts
+187. ✅ Ensured provider always gets paid the full partner price regardless of customer pricing
+188. ✅ **UPDATED: Enhanced visual feedback to show extra margin (green) vs discount (orange) indicators**
 
 ### Next Session Goals:
 1. [x] ✅ **COMPLETED: Partner Product Access Implementation**

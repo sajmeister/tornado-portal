@@ -1062,14 +1062,7 @@ function CreateQuoteModal({
       return;
     }
 
-    // Validate that customer prices don't exceed partner prices (for partner users)
-    if (bIsPartnerUser) {
-      const arrInvalidItems = arrValidItems.filter(item => item.decCustomerUnitPrice > item.decUnitPrice);
-      if (arrInvalidItems.length > 0) {
-        alert('Customer prices cannot exceed partner prices. Any discount comes at your expense.');
-        return;
-      }
-    }
+    // No validation needed - partners can charge more (extra margin) or less (discount) than partner prices
 
     onSubmit({
       strNotes,
@@ -1102,7 +1095,7 @@ function CreateQuoteModal({
           <h2 className="text-xl font-semibold text-gray-900">Create New Quote</h2>
           {bIsPartnerUser && (
             <p className="text-sm text-blue-600 mt-1">
-              You can offer customer discounts. Any discount comes at your expense.
+              You can charge more (extra margin) or less (discount) than the partner price to your customers.
             </p>
           )}
         </div>
@@ -1270,13 +1263,13 @@ function CreateQuoteModal({
                             value={item.decCustomerUnitPrice}
                             onChange={(e) => fnUpdateItem(index, 'decCustomerUnitPrice', parseFloat(e.target.value) || 0)}
                             className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                              item.decCustomerUnitPrice > item.decUnitPrice ? 'border-red-300' : 'border-gray-300'
+                              item.decCustomerUnitPrice > item.decUnitPrice ? 'border-green-300' : 'border-gray-300'
                             }`}
                             required
                           />
                           {item.decCustomerUnitPrice > item.decUnitPrice && (
-                            <p className="text-xs text-red-600 mt-1">
-                              Cannot exceed partner price
+                            <p className="text-xs text-green-600 mt-1">
+                              Extra margin: ${((item.decCustomerUnitPrice - item.decUnitPrice) * item.intQuantity).toFixed(2)}
                             </p>
                           )}
                           {item.decCustomerUnitPrice < item.decUnitPrice && (
@@ -1353,13 +1346,15 @@ function CreateQuoteModal({
                     <div className="text-xs text-blue-500">What customer pays</div>
                   </div>
                   
-                  <div className="text-center p-4 bg-orange-50 rounded-lg">
-                    <div className="text-sm text-orange-600">Your Margin</div>
-                    <div className={`text-lg font-semibold ${fnCalculatePartnerMargin() >= 0 ? 'text-orange-700' : 'text-red-600'}`}>
-                      ${fnCalculatePartnerMargin().toFixed(2)}
+                                      <div className="text-center p-4 bg-orange-50 rounded-lg">
+                      <div className="text-sm text-orange-600">Your Margin</div>
+                      <div className={`text-lg font-semibold ${fnCalculatePartnerMargin() >= 0 ? 'text-orange-700' : 'text-red-600'}`}>
+                        ${fnCalculatePartnerMargin().toFixed(2)}
+                      </div>
+                      <div className="text-xs text-orange-500">
+                        {fnCalculatePartnerMargin() >= 0 ? 'Extra margin' : 'Discount at your expense'}
+                      </div>
                     </div>
-                    <div className="text-xs text-orange-500">Your profit/loss</div>
-                  </div>
                 </>
               )}
             </div>

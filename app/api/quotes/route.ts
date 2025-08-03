@@ -149,16 +149,12 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'Invalid quote items' }, { status: 400 });
       }
       
-      // For partner users, validate customer pricing
+      // For partner users, validate customer pricing exists but allow any value
       if (objUser.strRole === 'partner_admin' || objUser.strRole === 'partner_user') {
         if (!objItem.decCustomerUnitPrice) {
           return NextResponse.json({ success: false, error: 'Customer pricing required for partner users' }, { status: 400 });
         }
-        
-        // Ensure customer price doesn't exceed partner price
-        if (objItem.decCustomerUnitPrice > objItem.decUnitPrice) {
-          return NextResponse.json({ success: false, error: 'Customer price cannot exceed partner price' }, { status: 400 });
-        }
+        // Partners can charge more (extra margin) or less (discount) than partner prices - no validation needed
       }
     }
 
