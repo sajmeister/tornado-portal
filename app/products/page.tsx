@@ -45,6 +45,11 @@ export default function ProductsPage() {
     return fnHasPermission(strRole, 'product:manage');
   };
 
+  // Check if user has permission to view products
+  const fnCanViewProducts = (strRole: string): boolean => {
+    return fnHasPermission(strRole, 'product:view') || fnHasPermission(strRole, 'product:manage');
+  };
+
   // Helper function to get available dependencies for a product
   const fnGetAvailableDependencies = (strProductId?: string): IProduct[] => {
     if (!strProductId) {
@@ -97,9 +102,9 @@ export default function ProductsPage() {
         const objCurrentUser = objUserData.user;
         setObjUser(objCurrentUser);
 
-        // Check if user has permission
-        if (!fnCanManageProducts(objCurrentUser.strRole)) {
-          setStrError('Access denied. Only Super Admin and Provider User roles can manage products.');
+        // Check if user has permission to view products
+        if (!fnCanViewProducts(objCurrentUser.strRole)) {
+          setStrError('Access denied. You do not have permission to view products.');
           setIsLoading(false);
           return;
         }
@@ -237,7 +242,7 @@ export default function ProductsPage() {
     );
   }
 
-  if (strError && !fnCanManageProducts(objUser?.strRole || '')) {
+  if (strError && !fnCanViewProducts(objUser?.strRole || '')) {
     return (
       <div className="min-h-screen bg-gray-50 p-8">
         <div className="max-w-7xl mx-auto">
@@ -263,9 +268,14 @@ export default function ProductsPage() {
       <div className="max-w-7xl mx-auto p-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Product Catalog Management</h1>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {fnCanManageProducts(objUser?.strRole || '') ? 'Product Catalog Management' : 'Product Catalog'}
+          </h1>
           <p className="text-gray-600 mt-2">
-            Manage products for the Tornado Portal. Only Super Admin and Provider User roles can access this page.
+            {fnCanManageProducts(objUser?.strRole || '') 
+              ? 'Manage products for the Tornado Portal. Only Super Admin and Provider User roles can manage products.'
+              : 'View available products with partner-specific pricing.'
+            }
           </p>
           {objUser && (
             <p className="text-sm text-gray-500 mt-1">
@@ -287,20 +297,24 @@ export default function ProductsPage() {
           </div>
         )}
 
-        {/* Create Product Form */}
-        <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Create New Product</h2>
-          <CreateProductForm 
-            products={fnGetAvailableDependencies()}
-            onSubmit={fnCreateProduct} 
-            isLoading={bIsCreating} 
-          />
-        </div>
+        {/* Create Product Form - Only show for users who can manage products */}
+        {fnCanManageProducts(objUser?.strRole || '') && (
+          <div className="bg-white rounded-lg shadow p-6 mb-8">
+            <h2 className="text-xl font-semibold mb-4">Create New Product</h2>
+            <CreateProductForm 
+              products={fnGetAvailableDependencies()}
+              onSubmit={fnCreateProduct} 
+              isLoading={bIsCreating} 
+            />
+          </div>
+        )}
 
         {/* Products List */}
         <div className="bg-white rounded-lg shadow">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold">Products ({arrProducts.length})</h2>
+            <h2 className="text-xl font-semibold">
+              {fnCanManageProducts(objUser?.strRole || '') ? 'Products' : 'Available Products'} ({arrProducts.length})
+            </h2>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -315,15 +329,21 @@ export default function ProductsPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Price
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Dependency
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  {fnCanManageProducts(objUser?.strRole || '') && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Dependency
+                    </th>
+                  )}
+                  {fnCanManageProducts(objUser?.strRole || '') && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                  )}
+                  {fnCanManageProducts(objUser?.strRole || '') && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -343,54 +363,75 @@ export default function ProductsPage() {
                       {objProduct.strCategory}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div>Base: ${objProduct.decBasePrice.toFixed(2)}</div>
-                      <div className="text-blue-600">Partner: ${objProduct.decPartnerPrice.toFixed(2)}</div>
-                      {objProduct.decDiscountRate && (
-                        <div className="text-xs text-green-600">
-                          {objProduct.decDiscountRate}% discount
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {objProduct.strDependencyId ? (
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                          Depends on: {arrProducts.find(p => p.strProductId === objProduct.strDependencyId)?.strProductName || 'N/A'}
-                        </span>
+                      {fnCanManageProducts(objUser?.strRole || '') ? (
+                        <>
+                          <div>Base: ${objProduct.decBasePrice.toFixed(2)}</div>
+                          <div className="text-blue-600">Partner: ${objProduct.decPartnerPrice.toFixed(2)}</div>
+                          {objProduct.decDiscountRate && (
+                            <div className="text-xs text-green-600">
+                              {objProduct.decDiscountRate}% discount
+                            </div>
+                          )}
+                        </>
                       ) : (
-                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
-                          No Dependency
-                        </span>
+                        <>
+                          <div className="text-lg font-semibold text-blue-600">
+                            ${objProduct.decPartnerPrice.toFixed(2)}
+                          </div>
+                          {objProduct.decDiscountRate && (
+                            <div className="text-xs text-green-600">
+                              {objProduct.decDiscountRate}% partner discount applied
+                            </div>
+                          )}
+                        </>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        objProduct.bIsActive 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {objProduct.bIsActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button
-                        onClick={() => fnOpenEditModal(objProduct)}
-                        className="text-blue-600 hover:text-blue-900 mr-4"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => fnUpdateProduct(objProduct.strProductId, { bIsActive: !objProduct.bIsActive })}
-                        className="text-indigo-600 hover:text-indigo-900 mr-4"
-                      >
-                        {objProduct.bIsActive ? 'Deactivate' : 'Activate'}
-                      </button>
-                      <button
-                        onClick={() => fnDeleteProduct(objProduct.strProductId)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Delete
-                      </button>
-                    </td>
+                    {fnCanManageProducts(objUser?.strRole || '') && (
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {objProduct.strDependencyId ? (
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                            Depends on: {arrProducts.find(p => p.strProductId === objProduct.strDependencyId)?.strProductName || 'N/A'}
+                          </span>
+                        ) : (
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                            No Dependency
+                          </span>
+                        )}
+                      </td>
+                    )}
+                    {fnCanManageProducts(objUser?.strRole || '') && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          objProduct.bIsActive 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {objProduct.bIsActive ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                    )}
+                    {fnCanManageProducts(objUser?.strRole || '') && (
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button
+                          onClick={() => fnOpenEditModal(objProduct)}
+                          className="text-blue-600 hover:text-blue-900 mr-4"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => fnUpdateProduct(objProduct.strProductId, { bIsActive: !objProduct.bIsActive })}
+                          className="text-indigo-600 hover:text-indigo-900 mr-4"
+                        >
+                          {objProduct.bIsActive ? 'Deactivate' : 'Activate'}
+                        </button>
+                        <button
+                          onClick={() => fnDeleteProduct(objProduct.strProductId)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -399,8 +440,8 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* Edit Product Modal */}
-      {bIsEditing && objEditingProduct && (
+      {/* Edit Product Modal - Only show for users who can manage products */}
+      {bIsEditing && objEditingProduct && fnCanManageProducts(objUser?.strRole || '') && (
         <EditProductModal
           product={objEditingProduct}
           products={fnGetAvailableDependencies(objEditingProduct.strProductId)}

@@ -190,7 +190,7 @@ export async function POST(request: NextRequest) {
         strProductId,
         strProductName,
         strProductCode: `PROD_${Date.now()}`,
-        strDescription,
+        strDescription: strDescription || '',
         decBasePrice,
         decPartnerPrice: decBasePrice * 0.9, // 10% discount for partners
         strCategory,
