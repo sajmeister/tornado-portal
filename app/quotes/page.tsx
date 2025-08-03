@@ -493,18 +493,44 @@ export default function QuotesPage() {
                </div>
               
               <div className="space-y-2 mb-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Subtotal:</span>
-                  <span className="font-medium">${objQuote.decSubtotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Discount:</span>
-                  <span className="font-medium">${objQuote.decDiscountAmount.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-sm font-semibold border-t pt-2">
-                  <span>Total:</span>
-                  <span>${objQuote.decTotal.toFixed(2)}</span>
-                </div>
+                {/* Show different pricing based on user role */}
+                {objUser && fnCanBypassPartnerIsolation(objUser.strRole) ? (
+                  // Super Admin and Provider User see both Partner and Customer pricing
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Partner Subtotal:</span>
+                      <span className="font-medium">${objQuote.decSubtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Customer Subtotal:</span>
+                      <span className="font-medium text-blue-600">${objQuote.decCustomerSubtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Discount:</span>
+                      <span className="font-medium">${objQuote.decDiscountAmount.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-semibold border-t pt-2">
+                      <span>Customer Total:</span>
+                      <span className="text-blue-600">${objQuote.decTotal.toFixed(2)}</span>
+                    </div>
+                  </>
+                ) : (
+                  // Partner Admin and Partner Customer see only Customer pricing
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Subtotal:</span>
+                      <span className="font-medium">${objQuote.decCustomerSubtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600">Discount:</span>
+                      <span className="font-medium">${objQuote.decDiscountAmount.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-semibold border-t pt-2">
+                      <span>Total:</span>
+                      <span>${objQuote.decTotal.toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="text-sm text-gray-600 mb-4">
@@ -791,18 +817,48 @@ function QuoteDetailsModal({
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Financial Summary</h3>
               <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-700">Subtotal:</span>
-                  <span className="text-sm font-medium">${quote.decSubtotal.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-700">Discount:</span>
-                  <span className="text-sm font-medium">${quote.decDiscountAmount.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between border-t pt-2">
-                  <span className="text-sm font-semibold">Total:</span>
-                  <span className="text-sm font-semibold">${quote.decTotal.toFixed(2)}</span>
-                </div>
+                {/* Show different pricing based on user role */}
+                {objUser && fnCanBypassPartnerIsolation(objUser.strRole) ? (
+                  // Super Admin and Provider User see both Partner and Customer pricing
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-700">Partner Subtotal:</span>
+                      <span className="text-sm font-medium">${quote.decSubtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-700">Customer Subtotal:</span>
+                      <span className="text-sm font-medium text-blue-600">${quote.decCustomerSubtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-700">Discount:</span>
+                      <span className="text-sm font-medium">${quote.decDiscountAmount.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-2">
+                      <span className="text-sm font-semibold">Partner Total:</span>
+                      <span className="text-sm font-semibold">${quote.decPartnerTotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-2">
+                      <span className="text-sm font-semibold text-blue-600">Customer Total:</span>
+                      <span className="text-sm font-semibold text-blue-600">${quote.decTotal.toFixed(2)}</span>
+                    </div>
+                  </>
+                ) : (
+                  // Partner Admin and Partner Customer see only Customer pricing
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-700">Subtotal:</span>
+                      <span className="text-sm font-medium">${quote.decCustomerSubtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-gray-700">Discount:</span>
+                      <span className="text-sm font-medium">${quote.decDiscountAmount.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-2">
+                      <span className="text-sm font-semibold">Total:</span>
+                      <span className="text-sm font-semibold">${quote.decTotal.toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -817,8 +873,12 @@ function QuoteDetailsModal({
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Line Total</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {objUser && fnCanBypassPartnerIsolation(objUser.strRole) ? 'Unit Price' : 'Unit Price'}
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {objUser && fnCanBypassPartnerIsolation(objUser.strRole) ? 'Line Total' : 'Line Total'}
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
                   </tr>
                 </thead>
@@ -835,10 +895,28 @@ function QuoteDetailsModal({
                         {item.intQuantity}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        ${item.decUnitPrice.toFixed(2)}
+                        {objUser && fnCanBypassPartnerIsolation(objUser.strRole) ? (
+                          // Super Admin and Provider User see both Partner and Customer pricing
+                          <div>
+                            <div>Partner: ${item.decUnitPrice.toFixed(2)}</div>
+                            <div className="text-blue-600">Customer: ${item.decCustomerUnitPrice.toFixed(2)}</div>
+                          </div>
+                        ) : (
+                          // Partner Admin and Partner Customer see only Customer pricing
+                          `$${item.decCustomerUnitPrice.toFixed(2)}`
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        ${item.decLineTotal.toFixed(2)}
+                        {objUser && fnCanBypassPartnerIsolation(objUser.strRole) ? (
+                          // Super Admin and Provider User see both Partner and Customer pricing
+                          <div>
+                            <div>Partner: ${item.decLineTotal.toFixed(2)}</div>
+                            <div className="text-blue-600">Customer: ${item.decCustomerLineTotal.toFixed(2)}</div>
+                          </div>
+                        ) : (
+                          // Partner Admin and Partner Customer see only Customer pricing
+                          `$${item.decCustomerLineTotal.toFixed(2)}`
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
                         {item.strNotes || '-'}
