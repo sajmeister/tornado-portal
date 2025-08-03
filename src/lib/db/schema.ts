@@ -46,6 +46,7 @@ export const tblProducts = sqliteTable('tblProducts', {
   decPartnerPrice: real('decPartnerPrice').notNull(),
   intStockQuantity: integer('intStockQuantity'),
   strImageUrl: text('strImageUrl'),
+  strDependencyId: text('strDependencyId'), // Product ID that this product depends on (for add-ons)
   dtCreated: integer('dtCreated', { mode: 'timestamp' }),
   dtUpdated: integer('dtUpdated', { mode: 'timestamp' }),
   bIsActive: integer('bIsActive', { mode: 'boolean' }),

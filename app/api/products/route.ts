@@ -3,16 +3,54 @@ import { db } from '@/src/lib/db';
 import { tblProducts } from '@/src/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { fnVerifyToken } from '@/src/lib/auth';
-import { fnGetUserPartnerId, fnGetPartnerDiscountRate, fnCalculatePartnerPrice, fnCanBypassPartnerIsolation } from '@/src/lib/partners';
+import { fnHasPermission } from '@/src/lib/roles';
+import { fnGetUserPartnerId, fnGetPartnerDiscountRate, fnCalculatePartnerPrice } from '@/src/lib/partners';
+
+// Helper function to check for circular dependencies
+async function fnCheckCircularDependency(strProductId: string, strDependencyId: string): Promise<boolean> {
+  const arrVisited = new Set<string>();
+  let strCurrentId = strDependencyId;
+  
+  while (strCurrentId) {
+    if (arrVisited.has(strCurrentId)) {
+      return true; // Circular dependency detected
+    }
+    
+    if (strCurrentId === strProductId) {
+      return true; // Self-dependency detected
+    }
+    
+    arrVisited.add(strCurrentId);
+    
+    // Get the dependency of the current product
+    const arrCurrentProduct = await db
+      .select({ strDependencyId: tblProducts.strDependencyId })
+      .from(tblProducts)
+      .where(eq(tblProducts.strProductId, strCurrentId));
+    
+    if (arrCurrentProduct.length === 0) {
+      break; // Product not found
+    }
+    
+    strCurrentId = arrCurrentProduct[0].strDependencyId || '';
+  }
+  
+  return false; // No circular dependency
+}
 
 // Check if user has permission to manage products
 function fnCanManageProducts(strRole: string): boolean {
-  return strRole === 'super_admin' || strRole === 'provider_user';
+  return fnHasPermission(strRole, 'product:manage');
 }
 
 // Check if user has permission to view products
 function fnCanViewProducts(strRole: string): boolean {
-  return ['super_admin', 'provider_user', 'partner_admin', 'partner_user'].includes(strRole);
+  return fnHasPermission(strRole, 'product:view') || fnHasPermission(strRole, 'product:manage');
+}
+
+// Check if user can bypass partner isolation
+function fnCanBypassPartnerIsolation(strRole: string): boolean {
+  return fnHasPermission(strRole, 'product:manage');
 }
 
 // GET /api/products - List all products (with partner-specific pricing)
@@ -45,6 +83,7 @@ export async function GET(request: NextRequest) {
         decPartnerPrice: tblProducts.decPartnerPrice,
         strCategory: tblProducts.strCategory,
         intStockQuantity: tblProducts.intStockQuantity,
+        strDependencyId: tblProducts.strDependencyId,
         bIsActive: tblProducts.bIsActive,
         dtCreated: tblProducts.dtCreated,
       })
@@ -99,10 +138,10 @@ export async function POST(request: NextRequest) {
     }
 
     const objBody = await request.json();
-    const { strName, strDescription, decPrice, strCategory, bIsActive } = objBody;
+    const { strProductName, strDescription, decBasePrice, strCategory, bIsActive, strDependencyId } = objBody;
 
     // Validate required fields
-    if (!strName || !strDescription || decPrice === undefined || !strCategory) {
+    if (!strProductName || !strDescription || decBasePrice === undefined || !strCategory) {
       return NextResponse.json({
         success: false,
         message: 'Product name, description, price, and category are required'
@@ -110,7 +149,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate price
-    if (decPrice < 0) {
+    if (decBasePrice < 0) {
       return NextResponse.json({
         success: false,
         message: 'Price must be non-negative'
@@ -120,25 +159,50 @@ export async function POST(request: NextRequest) {
     // Generate product ID
     const strProductId = `product_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
+    // Validate dependency if provided
+    if (strDependencyId) {
+      const arrDependencyProduct = await db
+        .select()
+        .from(tblProducts)
+        .where(eq(tblProducts.strProductId, strDependencyId));
+      
+      if (arrDependencyProduct.length === 0) {
+        return NextResponse.json({
+          success: false,
+          message: 'Dependency product not found'
+        }, { status: 400 });
+      }
+
+      // Check for circular dependencies
+      const bHasCircularDependency = await fnCheckCircularDependency(strProductId, strDependencyId);
+      if (bHasCircularDependency) {
+        return NextResponse.json({
+          success: false,
+          message: 'Circular dependency detected. This would create an infinite dependency chain.'
+        }, { status: 400 });
+      }
+    }
+
     // Create product
     const arrNewProducts = await db
       .insert(tblProducts)
       .values({
         strProductId,
-        strProductName: strName,
+        strProductName,
         strProductCode: `PROD_${Date.now()}`,
         strDescription,
-        decBasePrice: decPrice,
-        decPartnerPrice: decPrice * 0.9, // 10% discount for partners
+        decBasePrice,
+        decPartnerPrice: decBasePrice * 0.9, // 10% discount for partners
         strCategory,
+        strDependencyId: strDependencyId || null,
         bIsActive: bIsActive !== undefined ? bIsActive : true,
         dtCreated: new Date(),
       })
       .returning({
         strProductId: tblProducts.strProductId,
-        strName: tblProducts.strProductName,
+        strProductName: tblProducts.strProductName,
         strDescription: tblProducts.strDescription,
-        decPrice: tblProducts.decBasePrice,
+        decBasePrice: tblProducts.decBasePrice,
         strCategory: tblProducts.strCategory,
         bIsActive: tblProducts.bIsActive,
         dtCreated: tblProducts.dtCreated,

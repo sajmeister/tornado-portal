@@ -15,6 +15,7 @@ interface IProduct {
   decDiscountRate?: number;
   strCategory: string;
   intStockQuantity?: number;
+  strDependencyId?: string; // Product ID that this product depends on
   bIsActive: boolean;
   dtCreated: string;
 }
@@ -42,6 +43,34 @@ export default function ProductsPage() {
   // Check if user has permission to manage products
   const fnCanManageProducts = (strRole: string): boolean => {
     return fnHasPermission(strRole, 'product:manage');
+  };
+
+  // Helper function to get available dependencies for a product
+  const fnGetAvailableDependencies = (strProductId?: string): IProduct[] => {
+    if (!strProductId) {
+      // For new products, all products are available as dependencies
+      return arrProducts.filter(product => product.bIsActive);
+    }
+
+    // For existing products, exclude the product itself and any products that depend on it
+    const arrExcludedIds = new Set<string>();
+    arrExcludedIds.add(strProductId);
+
+    // Find all products that depend on this product (directly or indirectly)
+    const fnFindDependents = (strTargetId: string) => {
+      arrProducts.forEach(product => {
+        if (product.strDependencyId === strTargetId && !arrExcludedIds.has(product.strProductId)) {
+          arrExcludedIds.add(product.strProductId);
+          fnFindDependents(product.strProductId);
+        }
+      });
+    };
+
+    fnFindDependents(strProductId);
+
+    return arrProducts.filter(product => 
+      product.bIsActive && !arrExcludedIds.has(product.strProductId)
+    );
   };
 
   const handleLogout = async () => {
@@ -262,6 +291,7 @@ export default function ProductsPage() {
         <div className="bg-white rounded-lg shadow p-6 mb-8">
           <h2 className="text-xl font-semibold mb-4">Create New Product</h2>
           <CreateProductForm 
+            products={fnGetAvailableDependencies()}
             onSubmit={fnCreateProduct} 
             isLoading={bIsCreating} 
           />
@@ -284,6 +314,9 @@ export default function ProductsPage() {
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Price
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Dependency
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
@@ -316,6 +349,17 @@ export default function ProductsPage() {
                         <div className="text-xs text-green-600">
                           {objProduct.decDiscountRate}% discount
                         </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {objProduct.strDependencyId ? (
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                          Depends on: {arrProducts.find(p => p.strProductId === objProduct.strDependencyId)?.strProductName || 'N/A'}
+                        </span>
+                      ) : (
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                          No Dependency
+                        </span>
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -359,6 +403,7 @@ export default function ProductsPage() {
       {bIsEditing && objEditingProduct && (
         <EditProductModal
           product={objEditingProduct}
+          products={fnGetAvailableDependencies(objEditingProduct.strProductId)}
           onSave={fnUpdateProduct}
           onClose={fnCloseEditModal}
           isLoading={bIsEditing}
@@ -371,11 +416,13 @@ export default function ProductsPage() {
 // Edit Product Modal Component
 function EditProductModal({ 
   product, 
+  products,
   onSave, 
   onClose, 
   isLoading 
 }: { 
   product: IProduct;
+  products: IProduct[];
   onSave: (productId: string, data: Partial<IProduct>) => void;
   onClose: () => void;
   isLoading: boolean;
@@ -385,6 +432,7 @@ function EditProductModal({
   const [decBasePrice, setDecBasePrice] = useState(product.decBasePrice.toString());
   const [strCategory, setStrCategory] = useState(product.strCategory);
   const [bIsActive, setBIsActive] = useState(product.bIsActive);
+  const [strDependencyId, setStrDependencyId] = useState<string | undefined>(product.strDependencyId);
 
   const fnHandleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -399,6 +447,7 @@ function EditProductModal({
       decBasePrice: parseFloat(decBasePrice),
       strCategory,
       bIsActive,
+      strDependencyId,
     });
   };
 
@@ -479,6 +528,24 @@ function EditProductModal({
               />
             </div>
             
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Dependency
+              </label>
+              <select
+                value={strDependencyId || ''}
+                onChange={(e) => setStrDependencyId(e.target.value || undefined)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">No Dependency</option>
+                {products.map((product: IProduct) => (
+                  <option key={product.strProductId} value={product.strProductId}>
+                    {product.strProductName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="flex items-center">
               <input
                 type="checkbox"
@@ -517,9 +584,11 @@ function EditProductModal({
 
 // Create Product Form Component
 function CreateProductForm({ 
+  products,
   onSubmit, 
   isLoading 
 }: { 
+  products: IProduct[];
   onSubmit: (data: Omit<IProduct, 'strProductId' | 'dtCreated'>) => void;
   isLoading: boolean;
 }) {
@@ -527,6 +596,7 @@ function CreateProductForm({
   const [strDescription, setStrDescription] = useState('');
   const [decBasePrice, setDecBasePrice] = useState('');
   const [strCategory, setStrCategory] = useState('');
+  const [strDependencyId, setStrDependencyId] = useState<string | undefined>(undefined);
 
   const fnHandleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -543,6 +613,7 @@ function CreateProductForm({
       decPartnerPrice: parseFloat(decBasePrice), // Will be calculated by API
       strCategory,
       bIsActive: true,
+      strDependencyId,
     });
 
     // Reset form
@@ -550,6 +621,7 @@ function CreateProductForm({
     setStrDescription('');
     setDecBasePrice('');
     setStrCategory('');
+    setStrDependencyId(undefined);
   };
 
   return (
@@ -611,6 +683,23 @@ function CreateProductForm({
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           required
         />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Dependency
+        </label>
+        <select
+          value={strDependencyId || ''}
+          onChange={(e) => setStrDependencyId(e.target.value || undefined)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+                          <option value="">No Dependency</option>
+                {products.map((product: IProduct) => (
+                  <option key={product.strProductId} value={product.strProductId}>
+                    {product.strProductName}
+                  </option>
+                ))}
+        </select>
       </div>
       <div>
         <button

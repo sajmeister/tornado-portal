@@ -1,11 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '../../../../src/lib/db';
-import { tblProducts } from '../../../../src/lib/db/schema';
+import { db } from '@/src/lib/db';
+import { tblProducts } from '@/src/lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { fnHasPermission } from '@/src/lib/roles';
+
+// Helper function to check for circular dependencies
+async function fnCheckCircularDependency(strProductId: string, strDependencyId: string): Promise<boolean> {
+  const arrVisited = new Set<string>();
+  let strCurrentId = strDependencyId;
+  
+  while (strCurrentId) {
+    if (arrVisited.has(strCurrentId)) {
+      return true; // Circular dependency detected
+    }
+    
+    if (strCurrentId === strProductId) {
+      return true; // Self-dependency detected
+    }
+    
+    arrVisited.add(strCurrentId);
+    
+    // Get the dependency of the current product
+    const arrCurrentProduct = await db
+      .select({ strDependencyId: tblProducts.strDependencyId })
+      .from(tblProducts)
+      .where(eq(tblProducts.strProductId, strCurrentId));
+    
+    if (arrCurrentProduct.length === 0) {
+      break; // Product not found
+    }
+    
+    strCurrentId = arrCurrentProduct[0].strDependencyId || '';
+  }
+  
+  return false; // No circular dependency
+}
 
 // Check if user has permission to manage products
 function fnCanManageProducts(strRole: string): boolean {
-  return strRole === 'super_admin' || strRole === 'provider_user';
+  return fnHasPermission(strRole, 'product:manage');
 }
 
 // PUT /api/products/[productId] - Update a product
@@ -34,19 +67,45 @@ export async function PUT(
 
     const { productId: strProductId } = await params;
     const objBody = await request.json();
-    const { strName, strDescription, decPrice, strCategory, bIsActive } = objBody;
+    const { strProductName, strDescription, decBasePrice, strCategory, bIsActive, strDependencyId } = objBody;
 
     // Build update object with only provided fields
     const objUpdateData: any = {};
     
-    if (strName !== undefined) objUpdateData.strProductName = strName;
+    if (strProductName !== undefined) objUpdateData.strProductName = strProductName;
     if (strDescription !== undefined) objUpdateData.strDescription = strDescription;
-    if (decPrice !== undefined) {
-      objUpdateData.decBasePrice = decPrice;
-      objUpdateData.decPartnerPrice = decPrice * 0.9; // 10% discount for partners
+    if (decBasePrice !== undefined) {
+      objUpdateData.decBasePrice = decBasePrice;
+      objUpdateData.decPartnerPrice = decBasePrice * 0.9; // 10% discount for partners
     }
     if (strCategory !== undefined) objUpdateData.strCategory = strCategory;
     if (bIsActive !== undefined) objUpdateData.bIsActive = bIsActive;
+    if (strDependencyId !== undefined) {
+      // Validate dependency if provided
+      if (strDependencyId) {
+        const arrDependencyProduct = await db
+          .select()
+          .from(tblProducts)
+          .where(eq(tblProducts.strProductId, strDependencyId));
+        
+        if (arrDependencyProduct.length === 0) {
+          return NextResponse.json({
+            success: false,
+            message: 'Dependency product not found'
+          }, { status: 400 });
+        }
+
+        // Check for circular dependencies
+        const bHasCircularDependency = await fnCheckCircularDependency(strProductId, strDependencyId);
+        if (bHasCircularDependency) {
+          return NextResponse.json({
+            success: false,
+            message: 'Circular dependency detected. This would create an infinite dependency chain.'
+          }, { status: 400 });
+        }
+      }
+      objUpdateData.strDependencyId = strDependencyId || null;
+    }
     
     objUpdateData.dtUpdated = new Date();
 
@@ -57,9 +116,9 @@ export async function PUT(
       .where(eq(tblProducts.strProductId, strProductId))
       .returning({
         strProductId: tblProducts.strProductId,
-        strName: tblProducts.strProductName,
+        strProductName: tblProducts.strProductName,
         strDescription: tblProducts.strDescription,
-        decPrice: tblProducts.decBasePrice,
+        decBasePrice: tblProducts.decBasePrice,
         strCategory: tblProducts.strCategory,
         bIsActive: tblProducts.bIsActive,
         dtCreated: tblProducts.dtCreated,

@@ -176,6 +176,7 @@ TURSO_AUTH_TOKEN=your-turso-token
 - [x] ✅ **COMPLETED: Added partner-specific discount rates**
 - [x] ✅ **COMPLETED: Created partner user management**
 - [x] ✅ **COMPLETED: Implemented comprehensive security protections**
+- [x] ✅ **COMPLETED: Fixed Orphaned Users page visibility**
 
 **Security Features Implemented**:
 - [x] ✅ **Self-removal prevention** for Partner Users and Orphaned Users pages
@@ -186,6 +187,7 @@ TURSO_AUTH_TOKEN=your-turso-token
 - [x] ✅ **Orphaned users logic** excludes Provider organization users (Super Admins, Provider Users)
 - [x] ✅ **User deletion endpoint** with comprehensive dependency checks
 - [x] ✅ **Proper error messages** and user feedback for security violations
+- [x] ✅ **Orphaned Users page visibility** restricted to Super Admins only
 
 **Success Criteria**:
 - [x] ✅ **Header design is consistent across all screens**
@@ -204,6 +206,7 @@ TURSO_AUTH_TOKEN=your-turso-token
 - [x] ✅ **Security protections prevent critical vulnerabilities**
 - [x] ✅ **User management includes full CRUD operations**
 - [x] ✅ **Orphaned users can be managed by Super Admins**
+- [x] ✅ **Orphaned Users page is only visible to Super Admins**
 
 #### Week 6: Quote to Order Flow (NEXT)
 **Tasks**:
@@ -424,6 +427,11 @@ tornado-portal/
 54. ✅ Enhanced user deletion endpoint with comprehensive dependency checks
 55. ✅ Added proper error messages and user feedback for security violations
 56. ✅ **Phase 2, Week 5 Partner Management & Security COMPLETED!**
+57. ✅ **MAJOR MILESTONE: Orphaned Users Page Visibility Fixed!**
+58. ✅ Refined permission system with `user:manage` vs `user:manage_partner`
+59. ✅ Updated frontend permission checks to use `fnHasPermission`
+60. ✅ Restricted Orphaned Users page to Super Admins only
+61. ✅ Updated header navigation to respect new permission structure
 
 ### Next Session Goals:
 1. [ ] Continue Phase 2, Week 6: Quote to Order Flow
@@ -441,6 +449,7 @@ tornado-portal/
 - ✅ **Authentication stability issues resolved**
 - ✅ **Partner management and multi-tenancy completed**
 - ✅ **Comprehensive security protections implemented**
+- ✅ **Orphaned Users page visibility fixed**
 - ✅ **Ready to continue Phase 2: Quote-to-Order Flow**
 
 ### Key Decisions Made:
@@ -459,6 +468,7 @@ tornado-portal/
 - ✅ **Permission-based UI rendering** for role-specific access
 - ✅ **Partner isolation** for multi-tenancy security
 - ✅ **Comprehensive security protections** for data integrity
+- ✅ **Granular permission system** with `user:manage` and `user:manage_partner`
 
 ---
 
@@ -587,6 +597,7 @@ enum EUserRole { ... }
 - ✅ **API route authentication standardization**
 - ✅ **Partner management and multi-tenancy fully implemented**
 - ✅ **Comprehensive security protections implemented**
+- ✅ **Orphaned Users page visibility fixed**
 
 ### In Progress:
 - **Phase 2: Core Business Logic** (Partner Management & Security Completed)
@@ -626,6 +637,7 @@ enum EUserRole { ... }
 - [x] ✅ **Comprehensive security protections in place**
 - [x] ✅ **User management with full CRUD operations**
 - [x] ✅ **Orphaned users management for Super Admins**
+- [x] ✅ **Orphaned Users page visibility properly restricted**
 
 ---
 
