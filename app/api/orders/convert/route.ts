@@ -24,11 +24,11 @@ export async function POST(request: NextRequest) {
 
     const objUser = arrUsers[0];
 
-    // Check if user has permission to manage orders
-    if (!objUser.strRole || !fnHasPermission(objUser.strRole, 'order:manage')) {
+    // Check if user has permission to manage orders or quotes (for converting quotes to orders)
+    if (!objUser.strRole || (!fnHasPermission(objUser.strRole, 'order:manage') && !fnHasPermission(objUser.strRole, 'quote:manage'))) {
       return NextResponse.json({ 
         success: false, 
-        error: 'Access denied. You do not have permission to manage orders.' 
+        error: 'Access denied. You do not have permission to convert quotes to orders.' 
       }, { status: 403 });
     }
 
@@ -59,6 +59,20 @@ export async function POST(request: NextRequest) {
         success: false,
         message: 'Only approved quotes can be converted to orders'
       }, { status: 400 });
+    }
+
+    // For partner admins, check if they can only convert quotes from their own partner organization
+    if (objUser.strRole === 'partner_admin') {
+      // Get the partner ID for the current user
+      const { fnGetUserPartnerId } = await import('@/src/lib/partners');
+      const strUserPartnerId = await fnGetUserPartnerId(strUserIdNonNull);
+      
+      if (strUserPartnerId !== objQuote.strPartnerId) {
+        return NextResponse.json({
+          success: false,
+          message: 'Access denied. You can only convert quotes from your own partner organization.'
+        }, { status: 403 });
+      }
     }
 
     // Check if quote is active
@@ -95,9 +109,9 @@ export async function POST(request: NextRequest) {
         strPartnerId: objQuote.strPartnerId,
         strCreatedBy: strUserIdNonNull,
         strStatus: 'pending',
-        decSubtotal: objQuote.decSubtotal,
+        decSubtotal: objQuote.decCustomerSubtotal, // Use customer subtotal for order
         decDiscountAmount: objQuote.decDiscountAmount,
-        decTotal: objQuote.decTotal,
+        decTotal: objQuote.decTotal, // Use customer total for order
         strNotes: objQuote.strNotes,
         dtCreated: new Date(),
         dtUpdated: new Date(),
@@ -118,8 +132,8 @@ export async function POST(request: NextRequest) {
       strOrderId,
       strProductId: objQuoteItem.strProductId,
       intQuantity: objQuoteItem.intQuantity,
-      decUnitPrice: objQuoteItem.decUnitPrice,
-      decLineTotal: objQuoteItem.decLineTotal,
+      decUnitPrice: objQuoteItem.decCustomerUnitPrice, // Use customer unit price for order
+      decLineTotal: objQuoteItem.decCustomerLineTotal, // Use customer line total for order
       strNotes: objQuoteItem.strNotes,
       dtCreated: new Date(),
       bIsActive: true,
