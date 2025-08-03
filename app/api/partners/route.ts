@@ -114,8 +114,7 @@ export async function POST(request: NextRequest) {
       strCity,
       strState,
       strCountry,
-      strPostalCode,
-      decDiscountRate
+      strPostalCode
     } = objBody;
 
     // Validate required fields
@@ -157,7 +156,7 @@ export async function POST(request: NextRequest) {
         strState,
         strCountry,
         strPostalCode,
-        decDiscountRate: decDiscountRate || 0,
+
         dtCreated: dtNow,
         dtUpdated: dtNow,
         bIsActive: true,

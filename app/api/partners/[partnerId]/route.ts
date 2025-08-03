@@ -140,8 +140,7 @@ export async function PUT(
       strCity,
       strState,
       strCountry,
-      strPostalCode,
-      decDiscountRate
+      strPostalCode
     } = objBody;
 
     // Validate required fields
@@ -198,7 +197,7 @@ export async function PUT(
         strState,
         strCountry,
         strPostalCode,
-        decDiscountRate: decDiscountRate || 0,
+
         dtUpdated: dtNow,
       })
       .where(eq(tblPartners.strPartnerId, strPartnerId))

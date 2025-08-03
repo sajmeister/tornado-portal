@@ -29,7 +29,6 @@ export const tblPartners = sqliteTable('tblPartners', {
   strState: text('strState'),
   strCountry: text('strCountry'),
   strPostalCode: text('strPostalCode'),
-  decDiscountRate: real('decDiscountRate'),
   dtCreated: integer('dtCreated', { mode: 'timestamp' }),
   dtUpdated: integer('dtUpdated', { mode: 'timestamp' }),
   bIsActive: integer('bIsActive', { mode: 'boolean' }),
@@ -43,10 +42,20 @@ export const tblProducts = sqliteTable('tblProducts', {
   strDescription: text('strDescription'),
   strCategory: text('strCategory').notNull(),
   decBasePrice: real('decBasePrice').notNull(),
-  decPartnerPrice: real('decPartnerPrice').notNull(),
   intStockQuantity: integer('intStockQuantity'),
   strImageUrl: text('strImageUrl'),
   strDependencyId: text('strDependencyId'), // Product ID that this product depends on (for add-ons)
+  dtCreated: integer('dtCreated', { mode: 'timestamp' }),
+  dtUpdated: integer('dtUpdated', { mode: 'timestamp' }),
+  bIsActive: integer('bIsActive', { mode: 'boolean' }),
+});
+
+// Partner Prices table - for partner-specific pricing
+export const tblPartnerPrices = sqliteTable('tblPartnerPrices', {
+  strPartnerPriceId: text('strPartnerPriceId').primaryKey(),
+  strPartnerId: text('strPartnerId').notNull(),
+  strProductId: text('strProductId').notNull(),
+  decPartnerPrice: real('decPartnerPrice').notNull(),
   dtCreated: integer('dtCreated', { mode: 'timestamp' }),
   dtUpdated: integer('dtUpdated', { mode: 'timestamp' }),
   bIsActive: integer('bIsActive', { mode: 'boolean' }),

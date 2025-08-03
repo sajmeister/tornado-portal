@@ -4,7 +4,7 @@ import { tblProducts } from '@/src/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { fnVerifyToken } from '@/src/lib/auth';
 import { fnHasPermission } from '@/src/lib/roles';
-import { fnGetUserPartnerId, fnGetPartnerDiscountRate, fnCalculatePartnerPrice } from '@/src/lib/partners';
+import { fnGetUserPartnerId, fnGetPartnerPrice } from '@/src/lib/partners';
 
 // Helper function to check for circular dependencies
 async function fnCheckCircularDependency(strProductId: string, strDependencyId: string): Promise<boolean> {
@@ -80,7 +80,6 @@ export async function GET(request: NextRequest) {
         strProductCode: tblProducts.strProductCode,
         strDescription: tblProducts.strDescription,
         decBasePrice: tblProducts.decBasePrice,
-        decPartnerPrice: tblProducts.decPartnerPrice,
         strCategory: tblProducts.strCategory,
         intStockQuantity: tblProducts.intStockQuantity,
         strDependencyId: tblProducts.strDependencyId,
@@ -96,13 +95,25 @@ export async function GET(request: NextRequest) {
     if (!fnCanBypassPartnerIsolation(strUserRole)) {
       const strPartnerId = await fnGetUserPartnerId(strUserId);
       if (strPartnerId) {
-        const decDiscountRate = await fnGetPartnerDiscountRate(strPartnerId);
-        arrProductsWithPricing = arrProducts.map(objProduct => ({
-          ...objProduct,
-          decPartnerPrice: fnCalculatePartnerPrice(objProduct.decBasePrice, decDiscountRate),
-          decDiscountRate
-        }));
+        // Get partner prices for all products
+        const arrProductsWithPartnerPricing = await Promise.all(
+          arrProducts.map(async (objProduct) => {
+            const decPartnerPrice = await fnGetPartnerPrice(strPartnerId, objProduct.strProductId);
+            return {
+              ...objProduct,
+              decPartnerPrice: decPartnerPrice || objProduct.decBasePrice, // Fallback to base price if no partner price
+              decDisplayPrice: decPartnerPrice || objProduct.decBasePrice, // Price to display to partner
+            };
+          })
+        );
+        arrProductsWithPricing = arrProductsWithPartnerPricing;
       }
+    } else {
+      // For admin users, show base prices
+      arrProductsWithPricing = arrProducts.map(objProduct => ({
+        ...objProduct,
+        decDisplayPrice: objProduct.decBasePrice,
+      }));
     }
 
     return NextResponse.json({
@@ -192,7 +203,6 @@ export async function POST(request: NextRequest) {
         strProductCode: `PROD_${Date.now()}`,
         strDescription: strDescription || '',
         decBasePrice,
-        decPartnerPrice: decBasePrice * 0.9, // 10% discount for partners
         strCategory,
         strDependencyId: strDependencyId || null,
         bIsActive: bIsActive !== undefined ? bIsActive : true,

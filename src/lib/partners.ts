@@ -1,5 +1,5 @@
 import { db } from './db';
-import { tblPartnerUsers, tblPartners } from './db/schema';
+import { tblPartnerUsers, tblPartners, tblPartnerPrices } from './db/schema';
 import { eq, and } from 'drizzle-orm';
 import { EUserRole } from './roles';
 
@@ -14,7 +14,6 @@ export interface IPartner {
   strState: string | null;
   strCountry: string | null;
   strPostalCode: string | null;
-  decDiscountRate: number | null;
   dtCreated: Date | null;
   dtUpdated: Date | null;
   bIsActive: boolean | null;
@@ -83,31 +82,101 @@ export async function fnCanAccessPartner(strUserId: string, strPartnerId: string
   }
 }
 
-// Get partner-specific discount rate
-export async function fnGetPartnerDiscountRate(strPartnerId: string): Promise<number> {
+// Get partner-specific price for a product
+export async function fnGetPartnerPrice(strPartnerId: string, strProductId: string): Promise<number | null> {
   try {
-    const arrPartners = await db
+    const arrPartnerPrices = await db
       .select({
-        decDiscountRate: tblPartners.decDiscountRate,
+        decPartnerPrice: tblPartnerPrices.decPartnerPrice,
       })
-      .from(tblPartners)
+      .from(tblPartnerPrices)
       .where(and(
-        eq(tblPartners.strPartnerId, strPartnerId),
-        eq(tblPartners.bIsActive, true)
+        eq(tblPartnerPrices.strPartnerId, strPartnerId),
+        eq(tblPartnerPrices.strProductId, strProductId),
+        eq(tblPartnerPrices.bIsActive, true)
       ))
       .limit(1);
 
-    return arrPartners.length > 0 ? (arrPartners[0].decDiscountRate || 0) : 0;
+    return arrPartnerPrices.length > 0 ? arrPartnerPrices[0].decPartnerPrice : null;
   } catch (error) {
-    console.error('Error getting partner discount rate:', error);
-    return 0;
+    console.error('Error getting partner price:', error);
+    return null;
   }
 }
 
-// Calculate partner-specific price
-export function fnCalculatePartnerPrice(decBasePrice: number, decDiscountRate: number): number {
-  const decDiscountAmount = decBasePrice * (decDiscountRate / 100);
-  return decBasePrice - decDiscountAmount;
+// Get all partner prices for a partner
+export async function fnGetPartnerPrices(strPartnerId: string): Promise<Array<{ strProductId: string; decPartnerPrice: number }>> {
+  try {
+    const arrPartnerPrices = await db
+      .select({
+        strProductId: tblPartnerPrices.strProductId,
+        decPartnerPrice: tblPartnerPrices.decPartnerPrice,
+      })
+      .from(tblPartnerPrices)
+      .where(and(
+        eq(tblPartnerPrices.strPartnerId, strPartnerId),
+        eq(tblPartnerPrices.bIsActive, true)
+      ));
+
+    return arrPartnerPrices;
+  } catch (error) {
+    console.error('Error getting partner prices:', error);
+    return [];
+  }
+}
+
+// Set partner price for a product
+export async function fnSetPartnerPrice(
+  strPartnerId: string, 
+  strProductId: string, 
+  decPartnerPrice: number
+): Promise<boolean> {
+  try {
+    // Check if partner price already exists
+    const arrExistingPrices = await db
+      .select()
+      .from(tblPartnerPrices)
+      .where(and(
+        eq(tblPartnerPrices.strPartnerId, strPartnerId),
+        eq(tblPartnerPrices.strProductId, strProductId),
+        eq(tblPartnerPrices.bIsActive, true)
+      ))
+      .limit(1);
+
+    if (arrExistingPrices.length > 0) {
+      // Update existing price
+      await db
+        .update(tblPartnerPrices)
+        .set({
+          decPartnerPrice,
+          dtUpdated: new Date(),
+        })
+        .where(and(
+          eq(tblPartnerPrices.strPartnerId, strPartnerId),
+          eq(tblPartnerPrices.strProductId, strProductId),
+          eq(tblPartnerPrices.bIsActive, true)
+        ));
+    } else {
+      // Create new price
+      const strPartnerPriceId = `partner_price_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      await db
+        .insert(tblPartnerPrices)
+        .values({
+          strPartnerPriceId,
+          strPartnerId,
+          strProductId,
+          decPartnerPrice,
+          dtCreated: new Date(),
+          dtUpdated: new Date(),
+          bIsActive: true,
+        });
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error setting partner price:', error);
+    return false;
+  }
 }
 
 // Check if user role can bypass partner isolation
