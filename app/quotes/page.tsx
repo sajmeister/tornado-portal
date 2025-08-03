@@ -499,19 +499,19 @@ export default function QuotesPage() {
                   <>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Partner Subtotal:</span>
-                      <span className="font-medium">${objQuote.decSubtotal.toFixed(2)}</span>
+                      <span className="font-medium">${(objQuote.decSubtotal || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Customer Subtotal:</span>
-                      <span className="font-medium text-blue-600">${objQuote.decCustomerSubtotal.toFixed(2)}</span>
+                      <span className="font-medium text-blue-600">${(objQuote.decCustomerSubtotal || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Discount:</span>
-                      <span className="font-medium">${objQuote.decDiscountAmount.toFixed(2)}</span>
+                      <span className="font-medium">${(objQuote.decDiscountAmount || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-sm font-semibold border-t pt-2">
                       <span>Customer Total:</span>
-                      <span className="text-blue-600">${objQuote.decTotal.toFixed(2)}</span>
+                      <span className="text-blue-600">${(objQuote.decTotal || 0).toFixed(2)}</span>
                     </div>
                   </>
                 ) : (
@@ -519,15 +519,15 @@ export default function QuotesPage() {
                   <>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Subtotal:</span>
-                      <span className="font-medium">${objQuote.decCustomerSubtotal.toFixed(2)}</span>
+                      <span className="font-medium">${(objQuote.decCustomerSubtotal || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Discount:</span>
-                      <span className="font-medium">${objQuote.decDiscountAmount.toFixed(2)}</span>
+                      <span className="font-medium">${(objQuote.decDiscountAmount || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-sm font-semibold border-t pt-2">
                       <span>Total:</span>
-                      <span>${objQuote.decTotal.toFixed(2)}</span>
+                      <span>${(objQuote.decTotal || 0).toFixed(2)}</span>
                     </div>
                   </>
                 )}
@@ -823,23 +823,23 @@ function QuoteDetailsModal({
                   <>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-700">Partner Subtotal:</span>
-                      <span className="text-sm font-medium">${quote.decSubtotal.toFixed(2)}</span>
+                      <span className="text-sm font-medium">${(quote.decSubtotal || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-700">Customer Subtotal:</span>
-                      <span className="text-sm font-medium text-blue-600">${quote.decCustomerSubtotal.toFixed(2)}</span>
+                      <span className="text-sm font-medium text-blue-600">${(quote.decCustomerSubtotal || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-700">Discount:</span>
-                      <span className="text-sm font-medium">${quote.decDiscountAmount.toFixed(2)}</span>
+                      <span className="text-sm font-medium">${(quote.decDiscountAmount || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between border-t pt-2">
                       <span className="text-sm font-semibold">Partner Total:</span>
-                      <span className="text-sm font-semibold">${quote.decPartnerTotal.toFixed(2)}</span>
+                      <span className="text-sm font-semibold">${(quote.decPartnerTotal || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between border-t pt-2">
                       <span className="text-sm font-semibold text-blue-600">Customer Total:</span>
-                      <span className="text-sm font-semibold text-blue-600">${quote.decTotal.toFixed(2)}</span>
+                      <span className="text-sm font-semibold text-blue-600">${(quote.decTotal || 0).toFixed(2)}</span>
                     </div>
                   </>
                 ) : (
@@ -847,15 +847,15 @@ function QuoteDetailsModal({
                   <>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-700">Subtotal:</span>
-                      <span className="text-sm font-medium">${quote.decCustomerSubtotal.toFixed(2)}</span>
+                      <span className="text-sm font-medium">${(quote.decCustomerSubtotal || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm text-gray-700">Discount:</span>
-                      <span className="text-sm font-medium">${quote.decDiscountAmount.toFixed(2)}</span>
+                      <span className="text-sm font-medium">${(quote.decDiscountAmount || 0).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between border-t pt-2">
                       <span className="text-sm font-semibold">Total:</span>
-                      <span className="text-sm font-semibold">${quote.decTotal.toFixed(2)}</span>
+                      <span className="text-sm font-semibold">${(quote.decTotal || 0).toFixed(2)}</span>
                     </div>
                   </>
                 )}
@@ -898,24 +898,24 @@ function QuoteDetailsModal({
                         {objUser && fnCanBypassPartnerIsolation(objUser.strRole) ? (
                           // Super Admin and Provider User see both Partner and Customer pricing
                           <div>
-                            <div>Partner: ${item.decUnitPrice.toFixed(2)}</div>
-                            <div className="text-blue-600">Customer: ${item.decCustomerUnitPrice.toFixed(2)}</div>
+                            <div>Partner: ${(item.decUnitPrice || 0).toFixed(2)}</div>
+                            <div className="text-blue-600">Customer: ${(item.decCustomerUnitPrice || 0).toFixed(2)}</div>
                           </div>
                         ) : (
                           // Partner Admin and Partner Customer see only Customer pricing
-                          `$${item.decCustomerUnitPrice.toFixed(2)}`
+                          `$${(item.decCustomerUnitPrice || 0).toFixed(2)}`
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {objUser && fnCanBypassPartnerIsolation(objUser.strRole) ? (
                           // Super Admin and Provider User see both Partner and Customer pricing
                           <div>
-                            <div>Partner: ${item.decLineTotal.toFixed(2)}</div>
-                            <div className="text-blue-600">Customer: ${item.decCustomerLineTotal.toFixed(2)}</div>
+                            <div>Partner: ${(item.decLineTotal || 0).toFixed(2)}</div>
+                            <div className="text-blue-600">Customer: ${(item.decCustomerLineTotal || 0).toFixed(2)}</div>
                           </div>
                         ) : (
                           // Partner Admin and Partner Customer see only Customer pricing
-                          `$${item.decCustomerLineTotal.toFixed(2)}`
+                          `$${(item.decCustomerLineTotal || 0).toFixed(2)}`
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-900">
