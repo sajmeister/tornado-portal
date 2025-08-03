@@ -193,12 +193,37 @@ export default function QuotesPage() {
     }
   };
 
-  const fnGetStatusColor = (strStatus: string): string => {
+  const fnGetStatusDisplayName = (strStatus: string, objUser?: IUser | null): string => {
+    if (!strStatus) return 'No Status';
+    
+    // For Partner users, don't show "sent" status - show it as "pending"
+    const strDisplayStatus = (objUser && !fnCanBypassPartnerIsolation(objUser.strRole) && strStatus.toLowerCase() === 'sent') 
+      ? 'pending' 
+      : strStatus.toLowerCase();
+    
+    const objStatusMap: { [key: string]: string } = {
+      'draft': 'Draft',
+      'sent': 'Sent',
+      'pending': 'Pending Review',
+      'approved': 'Approved',
+      'rejected': 'Rejected',
+      'expired': 'Expired'
+    };
+    return objStatusMap[strDisplayStatus] || strStatus;
+  };
+
+  const fnGetStatusColor = (strStatus: string, objUser?: IUser | null): string => {
     if (!strStatus) return 'bg-gray-200 text-gray-900 border border-gray-300';
     
-    switch (strStatus.toLowerCase()) {
+    // For Partner users, don't show "sent" status - show it as "pending"
+    const strDisplayStatus = (objUser && !fnCanBypassPartnerIsolation(objUser.strRole) && strStatus.toLowerCase() === 'sent') 
+      ? 'pending' 
+      : strStatus.toLowerCase();
+    
+    switch (strDisplayStatus) {
       case 'draft': return 'bg-gray-200 text-gray-900 border border-gray-400';
       case 'sent': return 'bg-blue-200 text-blue-900 border border-blue-400';
+      case 'pending': return 'bg-orange-200 text-orange-900 border border-orange-400';
       case 'approved': return 'bg-green-200 text-green-900 border border-green-400';
       case 'rejected': return 'bg-red-200 text-red-900 border border-red-400';
       case 'expired': return 'bg-yellow-200 text-yellow-900 border border-yellow-400';
@@ -260,6 +285,39 @@ export default function QuotesPage() {
       }
     } catch (error) {
       setStrError('Error deleting quote');
+    }
+  };
+
+  const fnConvertQuoteToOrder = async (strQuoteId: string) => {
+    if (!confirm('Are you sure you want to convert this quote to an order? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const objResponse = await fetch(`/api/orders/convert`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ strQuoteId }),
+      });
+
+      const objData = await objResponse.json();
+      
+      if (objData.success) {
+        // Reload quotes
+        const objQuotesResponse = await fetch('/api/quotes');
+        const objQuotesData = await objQuotesResponse.json();
+        if (objQuotesData.success) {
+          setArrQuotes(objQuotesData.quotes);
+        }
+        // Show success message or redirect to orders
+        alert('Quote successfully converted to order!');
+      } else {
+        setStrError(objData.message || 'Failed to convert quote to order');
+      }
+    } catch (error) {
+      setStrError('Error converting quote to order');
     }
   };
 
@@ -332,35 +390,40 @@ export default function QuotesPage() {
                  </div>
                  <div className="text-right">
                    <div className="text-xs text-gray-500 mb-1">Status</div>
-                   <div className={`inline-flex items-center px-3 py-2 rounded-lg text-sm font-semibold uppercase tracking-wide ${fnGetStatusColor(objQuote.strStatus)}`}>
-                     {objQuote.strStatus === 'draft' && (
-                       <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                       </svg>
-                     )}
-                     {objQuote.strStatus === 'sent' && (
-                       <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                         <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                         <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-                       </svg>
-                     )}
-                     {objQuote.strStatus === 'approved' && (
-                       <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                       </svg>
-                     )}
-                     {objQuote.strStatus === 'rejected' && (
-                       <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                         <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                       </svg>
-                     )}
-                     {objQuote.strStatus === 'expired' && (
-                       <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                       </svg>
-                     )}
-                     {objQuote.strStatus || 'No Status'}
-                   </div>
+                                       <div className={`inline-flex items-center px-3 py-2 rounded-lg text-sm font-semibold uppercase tracking-wide ${fnGetStatusColor(objQuote.strStatus, objUser)}`}>
+                      {fnGetStatusDisplayName(objQuote.strStatus, objUser) === 'Draft' && (
+                        <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                      {fnGetStatusDisplayName(objQuote.strStatus, objUser) === 'Sent' && (
+                        <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                          <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                        </svg>
+                      )}
+                      {fnGetStatusDisplayName(objQuote.strStatus, objUser) === 'Pending Review' && (
+                        <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                      {fnGetStatusDisplayName(objQuote.strStatus, objUser) === 'Approved' && (
+                        <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                      {fnGetStatusDisplayName(objQuote.strStatus, objUser) === 'Rejected' && (
+                        <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                      {fnGetStatusDisplayName(objQuote.strStatus, objUser) === 'Expired' && (
+                        <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                      {fnGetStatusDisplayName(objQuote.strStatus, objUser)}
+                    </div>
                  </div>
                </div>
               
@@ -408,6 +471,12 @@ export default function QuotesPage() {
                       Edit
                     </button>
                     <button 
+                      onClick={() => fnUpdateQuoteStatus(objQuote.strQuoteId, 'sent', 'Quote sent to customer')}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
+                    >
+                      Send Quote
+                    </button>
+                    <button 
                       onClick={() => fnDeleteQuote(objQuote.strQuoteId)}
                       className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
                     >
@@ -415,8 +484,8 @@ export default function QuotesPage() {
                     </button>
                   </>
                 )}
-                {/* Approval buttons - only for Super Admin and Provider User */}
-                {objUser && fnHasPermission(objUser.strRole, 'quote:manage') && objQuote.strStatus === 'sent' && (
+                {/* Approval buttons - for Partner users when quote is sent */}
+                {objUser && !fnCanBypassPartnerIsolation(objUser.strRole) && objQuote.strStatus === 'sent' && (
                   <>
                     <button 
                       onClick={() => fnUpdateQuoteStatus(objQuote.strQuoteId, 'approved', 'Quote approved')}
@@ -431,6 +500,16 @@ export default function QuotesPage() {
                       Reject
                     </button>
                   </>
+                )}
+                
+                {/* Convert to Order button for approved quotes */}
+                {objUser && fnHasPermission(objUser.strRole, 'quote:manage') && objQuote.strStatus === 'approved' && (
+                  <button 
+                    onClick={() => fnConvertQuoteToOrder(objQuote.strQuoteId)}
+                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
+                  >
+                    Convert to Order
+                  </button>
                 )}
               </div>
             </div>
@@ -468,20 +547,21 @@ export default function QuotesPage() {
         />
       )}
 
-      {/* Quote Details Modal */}
-      {bShowQuoteDetailsModal && objSelectedQuote && (
-        <QuoteDetailsModal
-          quote={objSelectedQuote}
-          onClose={() => {
-            setBShowQuoteDetailsModal(false);
-            setObjSelectedQuote(null);
-          }}
-          onStatusUpdate={fnUpdateQuoteStatus}
-          onDelete={fnDeleteQuote}
-          canManageQuotes={objUser ? fnCanManageQuotes(objUser.strRole) : false}
-          getStatusColor={fnGetStatusColor}
-        />
-      )}
+             {/* Quote Details Modal */}
+       {bShowQuoteDetailsModal && objSelectedQuote && (
+         <QuoteDetailsModal
+           quote={objSelectedQuote}
+           onClose={() => {
+             setBShowQuoteDetailsModal(false);
+             setObjSelectedQuote(null);
+           }}
+           onStatusUpdate={fnUpdateQuoteStatus}
+           onDelete={fnDeleteQuote}
+           canManageQuotes={objUser ? fnCanManageQuotes(objUser.strRole) : false}
+           getStatusColor={fnGetStatusColor}
+           objUser={objUser}
+         />
+       )}
         </div>
   );
 }
@@ -493,14 +573,16 @@ function QuoteDetailsModal({
   onStatusUpdate,
   onDelete,
   canManageQuotes,
-  getStatusColor
+  getStatusColor,
+  objUser
 }: {
   quote: IQuote;
   onClose: () => void;
   onStatusUpdate: (quoteId: string, status: string, notes?: string) => void;
   onDelete: (quoteId: string) => void;
   canManageQuotes: boolean;
-  getStatusColor: (status: string) => string;
+  getStatusColor: (status: string, objUser?: IUser | null) => string;
+  objUser?: IUser | null;
 }) {
   const [strNewStatus, setStrNewStatus] = useState(quote.strStatus);
   const [strStatusNotes, setStrStatusNotes] = useState('');
@@ -520,17 +602,23 @@ function QuoteDetailsModal({
     }
   };
 
-  const fnGetStatusDisplayName = (strStatus: string): string => {
+  const fnGetStatusDisplayName = (strStatus: string, objUser?: IUser | null): string => {
     if (!strStatus) return 'No Status';
+    
+    // For Partner users, don't show "sent" status - show it as "pending"
+    const strDisplayStatus = (objUser && !fnCanBypassPartnerIsolation(objUser.strRole) && strStatus.toLowerCase() === 'sent') 
+      ? 'pending' 
+      : strStatus.toLowerCase();
     
     const objStatusMap: { [key: string]: string } = {
       'draft': 'Draft',
       'sent': 'Sent',
+      'pending': 'Pending Review',
       'approved': 'Approved',
       'rejected': 'Rejected',
       'expired': 'Expired'
     };
-    return objStatusMap[strStatus] || strStatus;
+    return objStatusMap[strDisplayStatus] || strStatus;
   };
 
   return (
@@ -560,38 +648,43 @@ function QuoteDetailsModal({
                   <label className="block text-sm font-medium text-gray-700">Quote Number</label>
                   <p className="text-sm text-gray-900 font-mono">{quote.strQuoteNumber}</p>
                 </div>
-                                 <div>
-                   <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                   <div className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold uppercase tracking-wide ${getStatusColor(quote.strStatus)}`}>
-                     {quote.strStatus === 'draft' && (
-                       <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                       </svg>
-                     )}
-                     {quote.strStatus === 'sent' && (
-                       <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                         <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                         <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-                       </svg>
-                     )}
-                     {quote.strStatus === 'approved' && (
-                       <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                       </svg>
-                     )}
-                     {quote.strStatus === 'rejected' && (
-                       <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                         <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                       </svg>
-                     )}
-                     {quote.strStatus === 'expired' && (
-                       <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                       </svg>
-                     )}
-                     {fnGetStatusDisplayName(quote.strStatus)}
-                   </div>
-                 </div>
+                                                   <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                    <div className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold uppercase tracking-wide ${getStatusColor(quote.strStatus, objUser)}`}>
+                      {fnGetStatusDisplayName(quote.strStatus, objUser) === 'Draft' && (
+                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                      {fnGetStatusDisplayName(quote.strStatus, objUser) === 'Sent' && (
+                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                          <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                        </svg>
+                      )}
+                      {fnGetStatusDisplayName(quote.strStatus, objUser) === 'Pending Review' && (
+                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                      {fnGetStatusDisplayName(quote.strStatus, objUser) === 'Approved' && (
+                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                      {fnGetStatusDisplayName(quote.strStatus, objUser) === 'Rejected' && (
+                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                      {fnGetStatusDisplayName(quote.strStatus, objUser) === 'Expired' && (
+                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                      {fnGetStatusDisplayName(quote.strStatus, objUser)}
+                    </div>
+                  </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Created</label>
                   <p className="text-sm text-gray-900">{new Date(quote.dtCreated).toLocaleDateString()}</p>
@@ -682,7 +775,10 @@ function QuoteDetailsModal({
           )}
 
           {/* Status Update Section - Only for users who can manage quotes */}
-          {canManageQuotes && quote.strStatus === 'sent' && (
+          {canManageQuotes && (
+            (quote.strStatus === 'draft' && objUser && fnCanBypassPartnerIsolation(objUser.strRole)) || 
+            (quote.strStatus === 'sent' && objUser && !fnCanBypassPartnerIsolation(objUser.strRole))
+          ) && (
             <div className="border-t border-gray-200 pt-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Update Status</h3>
               <div className="space-y-4">
@@ -693,9 +789,18 @@ function QuoteDetailsModal({
                     onChange={(e) => setStrNewStatus(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="sent">Sent</option>
-                    <option value="approved">Approved</option>
-                    <option value="rejected">Rejected</option>
+                    {quote.strStatus === 'draft' && objUser && fnCanBypassPartnerIsolation(objUser.strRole) && (
+                      <>
+                        <option value="draft">Draft</option>
+                        <option value="sent">Sent</option>
+                      </>
+                    )}
+                    {quote.strStatus === 'sent' && objUser && !fnCanBypassPartnerIsolation(objUser.strRole) && (
+                      <>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                      </>
+                    )}
                   </select>
                 </div>
                 <div>

@@ -30,18 +30,31 @@ export async function GET(request: NextRequest) {
       // Admin/Provider users can see all quotes
       arrQuotes = await db.select().from(tblQuotes).where(eq(tblQuotes.bIsActive, true)).orderBy(desc(tblQuotes.dtCreated));
     } else {
-      // Partner users can only see quotes from their partner
+      // Partner users can see quotes from their partner, but with special filtering for draft quotes
       const strPartnerId = await fnGetUserPartnerId(strUserIdNonNull);
       if (!strPartnerId) {
         return NextResponse.json({ success: false, error: 'User not associated with any partner' }, { status: 403 });
       }
       
+      // Get all quotes for this partner
       arrQuotes = await db.select().from(tblQuotes).where(
         and(
           eq(tblQuotes.strPartnerId, strPartnerId), 
           eq(tblQuotes.bIsActive, true)
         )
       ).orderBy(desc(tblQuotes.dtCreated));
+      
+      // Filter quotes: Partners can see their own draft quotes, but not draft quotes created by Provider users
+      arrQuotes = arrQuotes.filter(quote => {
+        // If quote is not in draft status, show it
+        if (!quote.strStatus || quote.strStatus.toLowerCase() !== 'draft') {
+          return true;
+        }
+        
+        // If quote is in draft status, only show it if the Partner created it themselves
+        // (i.e., the creator is not a Provider user)
+        return quote.strCreatedBy === strUserIdNonNull;
+      });
     }
 
     // Get quote items for each quote

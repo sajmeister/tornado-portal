@@ -5,7 +5,7 @@ Building "Tornado Portal" - a comprehensive B2B SaaS partner portal with role-ba
 
 **Status**: Development Phase  
 **Last Updated**: January 8, 2025  
-**Current Phase**: Phase 2 - Core Business Logic (Partner Management & Security COMPLETED) → Quote-to-Order Flow (COMPLETED) → Order Processing Simulation (COMPLETED) → Polish & Testing (NEXT)
+**Current Phase**: Phase 2 - Core Business Logic (Partner Management & Security COMPLETED) → Quote-to-Order Flow (COMPLETED) → Order Processing Simulation (COMPLETED) → Quote Workflow Refinement (COMPLETED) → Polish & Testing (NEXT)
 
 ---
 
@@ -472,15 +472,21 @@ tornado-portal/
 92. ✅ Updated API routes to support new order statuses (confirmed, provisioning, testing, ready)
 93. ✅ Added notification integration to header component
 94. ✅ **Phase 2, Week 7 COMPLETED!**
-95. ✅ **MAJOR MILESTONE: Quote Status Prominence Enhancement Completed!**
-96. ✅ Enhanced quote status badges with larger, more prominent design
-97. ✅ Added meaningful status icons for each quote status (draft, sent, approved, rejected, expired)
-98. ✅ Implemented vibrant color scheme with borders for better visual definition
-99. ✅ Added "Status" label above badges for clarity and better UX
-100. ✅ Updated both quote cards and QuoteDetailsModal with consistent prominent status display
-101. ✅ Used uppercase text with tracking-wide for better readability
-102. ✅ Positioned status prominently in top-right corner of quote cards
-103. ✅ Applied same enhancements to QuoteDetailsModal for consistency
+95. ✅ **MAJOR MILESTONE: Quote Workflow Refinement Completed!**
+96. ✅ Fixed quote visibility rules: Partners can see their own draft quotes but not Provider-created draft quotes
+97. ✅ Updated quotes API filtering logic to check quote creator (`strCreatedBy`) field
+98. ✅ Refined Partner user quote access: show own drafts, hide Provider drafts, show all sent/approved/rejected quotes
+99. ✅ Maintained Provider user access to all quotes (no change to admin functionality)
+100. ✅ Enhanced quote workflow: Partners can create drafts for their customers, Providers can create drafts for Partners
+101. ✅ **MAJOR MILESTONE: Quote Status Prominence Enhancement Completed!**
+102. ✅ Enhanced quote status badges with larger, more prominent design
+103. ✅ Added meaningful status icons for each quote status (draft, sent, approved, rejected, expired)
+104. ✅ Implemented vibrant color scheme with borders for better visual definition
+105. ✅ Added "Status" label above badges for clarity and better UX
+106. ✅ Updated both quote cards and QuoteDetailsModal with consistent prominent status display
+107. ✅ Used uppercase text with tracking-wide for better readability
+108. ✅ Positioned status prominently in top-right corner of quote cards
+109. ✅ Applied same enhancements to QuoteDetailsModal for consistency
 
 ### Next Session Goals:
 1. [x] ✅ **COMPLETED: Partner Product Access Implementation**
