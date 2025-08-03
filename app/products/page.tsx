@@ -245,14 +245,13 @@ export default function ProductsPage() {
     setIsEditing(false);
   };
 
-  const fnOpenPricingModal = (objProduct: IProduct) => {
-    setObjSelectedProduct(objProduct);
+  const fnOpenPricingModal = () => {
     setIsManagingPricing(true);
   };
 
   const fnClosePricingModal = () => {
-    setObjSelectedProduct(null);
     setIsManagingPricing(false);
+    setObjSelectedProduct(null);
   };
 
   const fnDeleteProduct = async (strProductId: string) => {
@@ -320,21 +319,42 @@ export default function ProductsPage() {
       
       <div className="max-w-7xl mx-auto p-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            {fnCanManageProducts(objUser?.strRole || '') ? 'Product Catalog Management' : 'Product Catalog'}
-          </h1>
-          <p className="text-gray-600 mt-2">
-            {fnCanManageProducts(objUser?.strRole || '') 
-              ? 'Manage products for the Tornado Portal. Only Super Admin and Provider User roles can manage products.'
-              : 'View available products with partner-specific pricing.'
-            }
-          </p>
-          {objUser && (
-            <p className="text-sm text-gray-500 mt-1">
-              Logged in as: {objUser.strName} ({objUser.strRole})
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {fnCanManageProducts(objUser?.strRole || '') ? 'Manage Products' : 'Products'}
+            </h1>
+            <p className="text-gray-600">
+              {fnCanManageProducts(objUser?.strRole || '') 
+                ? 'Create, edit, and manage product catalog with partner-specific pricing.'
+                : 'View available products with partner-specific pricing.'
+              }
             </p>
-          )}
+          </div>
+          <div className="flex space-x-3">
+            {fnCanManagePartnerPricing(objUser?.strRole || '') && (
+              <button
+                onClick={fnOpenPricingModal}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 flex items-center space-x-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                </svg>
+                <span>Partner Pricing</span>
+              </button>
+            )}
+            {fnCanManageProducts(objUser?.strRole || '') && (
+              <button
+                onClick={() => setIsCreating(true)}
+                className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center space-x-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                <span>Add Product</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Error Message */}
@@ -460,14 +480,6 @@ export default function ProductsPage() {
                         >
                           Edit
                         </button>
-                        {fnCanManagePartnerPricing(objUser?.strRole || '') && (
-                          <button
-                            onClick={() => fnOpenPricingModal(objProduct)}
-                            className="text-green-600 hover:text-green-900 mr-4"
-                          >
-                            Pricing
-                          </button>
-                        )}
                         <button
                           onClick={() => fnUpdateProduct(objProduct.strProductId, { bIsActive: !objProduct.bIsActive })}
                           className="text-indigo-600 hover:text-indigo-900 mr-4"
@@ -502,9 +514,9 @@ export default function ProductsPage() {
       )}
 
       {/* Partner Pricing Modal - Only show for users who can manage partner pricing */}
-      {bIsManagingPricing && objSelectedProduct && fnCanManagePartnerPricing(objUser?.strRole || '') && (
+      {bIsManagingPricing && fnCanManagePartnerPricing(objUser?.strRole || '') && (
         <PartnerPricingModal
-          product={objSelectedProduct}
+          products={arrProducts}
           partners={arrPartners}
           onClose={fnClosePricingModal}
         />
@@ -515,66 +527,66 @@ export default function ProductsPage() {
 
 // Partner Pricing Modal Component
 function PartnerPricingModal({ 
-  product, 
+  products, 
   partners,
   onClose 
 }: { 
-  product: IProduct;
+  products: IProduct[];
   partners: IPartner[];
   onClose: () => void;
 }) {
+  const [strSelectedPartnerId, setStrSelectedPartnerId] = useState<string>('');
+  const [objSelectedPartner, setObjSelectedPartner] = useState<IPartner | null>(null);
   const [arrPartnerPrices, setArrPartnerPrices] = useState<IPartnerPrice[]>([]);
-  const [bIsLoading, setIsLoading] = useState(true);
+  const [bIsLoading, setIsLoading] = useState(false);
   const [bIsSaving, setIsSaving] = useState(false);
   const [strError, setStrError] = useState('');
 
-  useEffect(() => {
-    const fnLoadPartnerPrices = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Load partner prices for this product
-        const arrPrices: IPartnerPrice[] = [];
-        
-        for (const partner of partners) {
-          const response = await fetch(`/api/partners/${partner.strPartnerId}/prices`);
-          const data = await response.json();
-          
-          if (data.success) {
-            const productPrice = data.products.find((p: any) => p.strProductId === product.strProductId);
-            if (productPrice) {
-              arrPrices.push({
-                strProductId: product.strProductId,
-                decPartnerPrice: productPrice.decPartnerPrice,
-                bHasCustomPrice: productPrice.bHasCustomPrice
-              });
-            }
-          }
-        }
-        
-        setArrPartnerPrices(arrPrices);
-      } catch (error) {
+  const fnLoadPartnerPrices = async (strPartnerId: string) => {
+    try {
+      setIsLoading(true);
+      setStrError('');
+      
+      const response = await fetch(`/api/partners/${strPartnerId}/prices`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setArrPartnerPrices(data.products || []);
+      } else {
         setStrError('Error loading partner prices');
-      } finally {
-        setIsLoading(false);
       }
-    };
+    } catch (error) {
+      setStrError('Error loading partner prices');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    fnLoadPartnerPrices();
-  }, [product.strProductId, partners]);
+  const fnHandlePartnerSelect = (strPartnerId: string) => {
+    setStrSelectedPartnerId(strPartnerId);
+    const partner = partners.find(p => p.strPartnerId === strPartnerId);
+    setObjSelectedPartner(partner || null);
+    if (strPartnerId) {
+      fnLoadPartnerPrices(strPartnerId);
+    } else {
+      setArrPartnerPrices([]);
+    }
+  };
 
-  const fnUpdatePartnerPrice = async (strPartnerId: string, decPartnerPrice: number) => {
+  const fnUpdatePartnerPrice = async (strProductId: string, decPartnerPrice: number) => {
+    if (!strSelectedPartnerId) return;
+    
     try {
       setIsSaving(true);
       
-      const response = await fetch(`/api/partners/${strPartnerId}/prices`, {
+      const response = await fetch(`/api/partners/${strSelectedPartnerId}/prices`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           arrPrices: [{
-            strProductId: product.strProductId,
+            strProductId: strProductId,
             decPartnerPrice: decPartnerPrice
           }]
         }),
@@ -586,7 +598,7 @@ function PartnerPricingModal({
         // Update local state
         setArrPartnerPrices(prev => 
           prev.map(price => 
-            price.strProductId === product.strProductId 
+            price.strProductId === strProductId 
               ? { ...price, decPartnerPrice, bHasCustomPrice: true }
               : price
           )
@@ -601,30 +613,17 @@ function PartnerPricingModal({
     }
   };
 
-  const fnResetToBasePrice = async (strPartnerId: string) => {
-    await fnUpdatePartnerPrice(strPartnerId, product.decBasePrice);
+  const fnResetToBasePrice = async (strProductId: string, decBasePrice: number) => {
+    await fnUpdatePartnerPrice(strProductId, decBasePrice);
   };
-
-  if (bIsLoading) {
-    return (
-      <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading partner pricing...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-      <div className="relative top-10 mx-auto p-5 border w-4/5 max-w-4xl shadow-lg rounded-md bg-white">
+      <div className="relative top-10 mx-auto p-5 border w-4/5 max-w-6xl shadow-lg rounded-md bg-white">
         <div className="mt-3">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-gray-900">
-              Partner Pricing for: {product.strProductName}
+              Partner Pricing Management
             </h3>
             <button
               onClick={onClose}
@@ -642,66 +641,133 @@ function PartnerPricingModal({
             </div>
           )}
 
-          <div className="mb-4">
-            <p className="text-sm text-gray-600">
-              Base Price: <span className="font-semibold">${product.decBasePrice.toFixed(2)}</span>
-            </p>
-            <p className="text-sm text-gray-600">
-              Set custom prices for each partner. Leave empty to use base price.
-            </p>
+          {/* Partner Selection */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Partner
+            </label>
+            <select
+              value={strSelectedPartnerId}
+              onChange={(e) => fnHandlePartnerSelect(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Choose a partner...</option>
+              {partners.map((partner) => (
+                <option key={partner.strPartnerId} value={partner.strPartnerId}>
+                  {partner.strPartnerName} ({partner.strPartnerCode})
+                </option>
+              ))}
+            </select>
           </div>
 
-          <div className="space-y-4 max-h-96 overflow-y-auto">
-            {partners.map((partner) => {
-              const partnerPrice = arrPartnerPrices.find(p => p.strProductId === product.strProductId);
-              const currentPrice = partnerPrice?.decPartnerPrice || product.decBasePrice;
-              const hasCustomPrice = partnerPrice?.bHasCustomPrice || false;
+          {/* Partner Information */}
+          {objSelectedPartner && (
+            <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h4 className="font-medium text-blue-900 mb-2">
+                {objSelectedPartner.strPartnerName}
+              </h4>
+              <p className="text-sm text-blue-700">
+                Code: {objSelectedPartner.strPartnerCode} | 
+                Email: {objSelectedPartner.strContactEmail}
+              </p>
+            </div>
+          )}
 
-              return (
-                <div key={partner.strPartnerId} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-900">{partner.strPartnerName}</h4>
-                      <p className="text-sm text-gray-500">{partner.strPartnerCode}</p>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="text-right">
-                        <p className="text-sm text-gray-600">Current Price:</p>
-                        <p className={`font-semibold ${hasCustomPrice ? 'text-green-600' : 'text-gray-900'}`}>
-                          ${currentPrice.toFixed(2)}
-                        </p>
-                        {hasCustomPrice && (
-                          <p className="text-xs text-green-600">Custom Price</p>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder={product.decBasePrice.toFixed(2)}
-                          className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
-                          onChange={(e) => {
-                            const value = parseFloat(e.target.value);
-                            if (!isNaN(value) && value > 0) {
-                              fnUpdatePartnerPrice(partner.strPartnerId, value);
-                            }
-                          }}
-                        />
-                        <button
-                          onClick={() => fnResetToBasePrice(partner.strPartnerId)}
-                          className="text-xs text-gray-500 hover:text-gray-700"
-                          title="Reset to base price"
-                        >
-                          Reset
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+          {/* Products and Pricing Table */}
+          {strSelectedPartnerId && (
+            <div>
+              <h4 className="font-medium text-gray-900 mb-4">Product Pricing</h4>
+              
+              {bIsLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="mt-2 text-gray-600">Loading pricing data...</p>
                 </div>
-              );
-            })}
-          </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Product
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Base Price
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Partner Price
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {products.map((product) => {
+                        const partnerPrice = arrPartnerPrices.find(p => p.strProductId === product.strProductId);
+                        const currentPrice = partnerPrice?.decPartnerPrice || product.decBasePrice;
+                        const hasCustomPrice = partnerPrice?.bHasCustomPrice || false;
+
+                        return (
+                          <tr key={product.strProductId}>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {product.strProductName}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {product.strProductCode}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm text-gray-900">
+                                ${product.decBasePrice.toFixed(2)}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center space-x-2">
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={currentPrice}
+                                  placeholder={product.decBasePrice.toFixed(2)}
+                                  className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
+                                  onChange={(e) => {
+                                    const value = parseFloat(e.target.value);
+                                    if (!isNaN(value) && value > 0) {
+                                      fnUpdatePartnerPrice(product.strProductId, value);
+                                    }
+                                  }}
+                                  disabled={bIsSaving}
+                                />
+                                {hasCustomPrice && (
+                                  <span className="text-xs text-green-600 font-medium">
+                                    Custom
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <button
+                                onClick={() => fnResetToBasePrice(product.strProductId, product.decBasePrice)}
+                                className="text-xs text-gray-500 hover:text-gray-700 disabled:opacity-50"
+                                disabled={bIsSaving || !hasCustomPrice}
+                                title="Reset to base price"
+                              >
+                                Reset
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex justify-end pt-4">
             <button

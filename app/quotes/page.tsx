@@ -922,12 +922,85 @@ function CreateQuoteModal({
   const [strNotes, setStrNotes] = useState('');
   const [dtValidUntil, setDtValidUntil] = useState('');
   const [strPartnerId, setStrPartnerId] = useState('');
+  const [arrPartnerPrices, setArrPartnerPrices] = useState<any[]>([]);
+  const [bIsLoadingPartnerPrices, setIsLoadingPartnerPrices] = useState(false);
   const [arrItems, setArrItems] = useState<Array<{
     strProductId: string;
     intQuantity: number;
     decUnitPrice: number;
     strNotes: string;
   }>>([]);
+
+  // Load partner pricing when partner is selected
+  const fnLoadPartnerPrices = async (strPartnerId: string) => {
+    if (!strPartnerId) {
+      setArrPartnerPrices([]);
+      return;
+    }
+
+    try {
+      setIsLoadingPartnerPrices(true);
+      const response = await fetch(`/api/partners/${strPartnerId}/prices`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setArrPartnerPrices(data.products || []);
+      } else {
+        setArrPartnerPrices([]);
+      }
+    } catch (error) {
+      console.error('Error loading partner prices:', error);
+      setArrPartnerPrices([]);
+    } finally {
+      setIsLoadingPartnerPrices(false);
+    }
+  };
+
+  // Handle partner selection
+  const fnHandlePartnerSelect = (strSelectedPartnerId: string) => {
+    setStrPartnerId(strSelectedPartnerId);
+    
+    if (strSelectedPartnerId) {
+      fnLoadPartnerPrices(strSelectedPartnerId);
+    } else {
+      setArrPartnerPrices([]);
+    }
+
+    // Update existing items with new pricing
+    setArrItems(prevItems => 
+      prevItems.map(item => {
+        if (item.strProductId) {
+          const objProduct = products.find(p => p.strProductId === item.strProductId);
+          if (objProduct) {
+            // Find partner-specific price
+            const partnerPrice = arrPartnerPrices.find(p => p.strProductId === item.strProductId);
+            const decNewPrice = partnerPrice?.decPartnerPrice || objProduct.decBasePrice;
+            
+            return {
+              ...item,
+              decUnitPrice: decNewPrice
+            };
+          }
+        }
+        return item;
+      })
+    );
+  };
+
+  // Get the correct price for a product based on selected partner
+  const fnGetProductPrice = (strProductId: string): number => {
+    const objProduct = products.find(p => p.strProductId === strProductId);
+    if (!objProduct) return 0;
+
+    if (strPartnerId) {
+      // Use partner-specific price if available
+      const partnerPrice = arrPartnerPrices.find(p => p.strProductId === strProductId);
+      return partnerPrice?.decPartnerPrice || objProduct.decBasePrice;
+    } else {
+      // Use display price or base price
+      return objProduct.decDisplayPrice || objProduct.decPartnerPrice || objProduct.decBasePrice;
+    }
+  };
 
   const fnAddItem = () => {
     setArrItems([...arrItems, {
@@ -948,12 +1021,8 @@ function CreateQuoteModal({
     
     // Auto-calculate unit price when product is selected
     if (strField === 'strProductId') {
-      const objProduct = products.find(p => p.strProductId === value);
-      if (objProduct) {
-        // Use the display price (partner-specific price) if available, otherwise fall back to base price
-        const decPrice = objProduct.decDisplayPrice || objProduct.decPartnerPrice || objProduct.decBasePrice;
-        arrNewItems[intIndex].decUnitPrice = decPrice;
-      }
+      const decPrice = fnGetProductPrice(value as string);
+      arrNewItems[intIndex].decUnitPrice = decPrice;
     }
     
     setArrItems(arrNewItems);
@@ -1019,18 +1088,30 @@ function CreateQuoteModal({
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Partner
                 </label>
-                <select
-                  value={strPartnerId}
-                  onChange={(e) => setStrPartnerId(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select a partner (optional)</option>
-                  {partners.map((partner) => (
-                    <option key={partner.strPartnerId} value={partner.strPartnerId}>
-                      {partner.strPartnerName} ({partner.strPartnerCode})
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select
+                    value={strPartnerId}
+                    onChange={(e) => fnHandlePartnerSelect(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select a partner (optional)</option>
+                    {partners.map((partner) => (
+                      <option key={partner.strPartnerId} value={partner.strPartnerId}>
+                        {partner.strPartnerName} ({partner.strPartnerCode})
+                      </option>
+                    ))}
+                  </select>
+                  {bIsLoadingPartnerPrices && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    </div>
+                  )}
+                </div>
+                {strPartnerId && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    Partner-specific pricing will be applied to all products
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -1062,7 +1143,7 @@ function CreateQuoteModal({
 
             {arrItems.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                                             <p>No items added yet. Click &quot;Add Item&quot; to get started.</p>
+                <p>No items added yet. Click "Add Item" to get started.</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -1080,11 +1161,18 @@ function CreateQuoteModal({
                           required
                         >
                           <option value="">Select a product</option>
-                                                      {products.map((product) => (
+                          {products.map((product) => {
+                            const decPrice = fnGetProductPrice(product.strProductId);
+                            const partnerPrice = arrPartnerPrices.find(p => p.strProductId === product.strProductId);
+                            const hasCustomPrice = partnerPrice?.bHasCustomPrice || false;
+                            
+                            return (
                               <option key={product.strProductId} value={product.strProductId}>
-                                {product.strProductName} - ${(product.decDisplayPrice || product.decPartnerPrice || product.decBasePrice).toFixed(2)}
+                                {product.strProductName} - ${decPrice.toFixed(2)}
+                                {hasCustomPrice && strPartnerId && ' (Custom)'}
                               </option>
-                            ))}
+                            );
+                          })}
                         </select>
                       </div>
 
@@ -1115,6 +1203,18 @@ function CreateQuoteModal({
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                           required
                         />
+                        {item.strProductId && strPartnerId && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            {(() => {
+                              const partnerPrice = arrPartnerPrices.find(p => p.strProductId === item.strProductId);
+                              const objProduct = products.find(p => p.strProductId === item.strProductId);
+                              if (partnerPrice?.bHasCustomPrice && objProduct) {
+                                return `Custom price (Base: $${objProduct.decBasePrice.toFixed(2)})`;
+                              }
+                              return 'Using partner pricing';
+                            })()}
+                          </p>
+                        )}
                       </div>
 
                       <div className="flex items-end space-x-2">
@@ -1156,32 +1256,28 @@ function CreateQuoteModal({
             )}
           </div>
 
-          {arrItems.length > 0 && (
-            <div className="bg-gray-50 rounded-lg p-4 mb-6">
-              <div className="text-right">
-                <div className="text-2xl font-bold text-gray-900">
-                  Total: ${fnCalculateTotal().toFixed(2)}
-                </div>
+          <div className="border-t border-gray-200 pt-4">
+            <div className="flex justify-between items-center">
+              <div className="text-lg font-semibold text-gray-900">
+                Total: ${fnCalculateTotal().toFixed(2)}
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {isLoading ? 'Creating...' : 'Create Quote'}
+                </button>
               </div>
             </div>
-          )}
-
-          <div className="flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-              disabled={isLoading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isLoading || arrItems.length === 0}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? 'Creating...' : 'Create Quote'}
-            </button>
           </div>
         </form>
       </div>
