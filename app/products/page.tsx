@@ -11,13 +11,34 @@ interface IProduct {
   strProductCode: string;
   strDescription: string;
   decBasePrice: number;
-  decPartnerPrice: number;
-  decDiscountRate?: number;
+  decDisplayPrice?: number; // New field from API
+  decPartnerPrice?: number; // Optional for backward compatibility
+  decDiscountRate?: number; // Optional for backward compatibility
   strCategory: string;
   intStockQuantity?: number;
   strDependencyId?: string; // Product ID that this product depends on
   bIsActive: boolean;
   dtCreated: string;
+}
+
+interface IPartner {
+  strPartnerId: string;
+  strPartnerName: string;
+  strPartnerCode: string;
+  strContactEmail: string;
+  strContactPhone?: string;
+  strAddress?: string;
+  strCity?: string;
+  strState?: string;
+  strCountry?: string;
+  strPostalCode?: string;
+  bIsActive: boolean;
+}
+
+interface IPartnerPrice {
+  strProductId: string;
+  decPartnerPrice: number;
+  bHasCustomPrice: boolean;
 }
 
 interface IUser {
@@ -32,11 +53,14 @@ interface IUser {
 
 export default function ProductsPage() {
   const [arrProducts, setArrProducts] = useState<IProduct[]>([]);
+  const [arrPartners, setArrPartners] = useState<IPartner[]>([]);
   const [objUser, setObjUser] = useState<IUser | null>(null);
   const [bIsLoading, setIsLoading] = useState(true);
   const [bIsCreating, setIsCreating] = useState(false);
   const [bIsEditing, setIsEditing] = useState(false);
+  const [bIsManagingPricing, setIsManagingPricing] = useState(false);
   const [objEditingProduct, setObjEditingProduct] = useState<IProduct | null>(null);
+  const [objSelectedProduct, setObjSelectedProduct] = useState<IProduct | null>(null);
   const [strError, setStrError] = useState('');
   const router = useRouter();
 
@@ -48,6 +72,11 @@ export default function ProductsPage() {
   // Check if user has permission to view products
   const fnCanViewProducts = (strRole: string): boolean => {
     return fnHasPermission(strRole, 'product:view') || fnHasPermission(strRole, 'product:manage');
+  };
+
+  // Check if user has permission to manage partner pricing
+  const fnCanManagePartnerPricing = (strRole: string): boolean => {
+    return fnHasPermission(strRole, 'partner:manage');
   };
 
   // Helper function to get available dependencies for a product
@@ -88,7 +117,7 @@ export default function ProductsPage() {
   };
 
   useEffect(() => {
-    const fnLoadUserAndProducts = async () => {
+    const fnLoadUserAndData = async () => {
       try {
         // Get current user
         const objUserResponse = await fetch('/api/auth/me');
@@ -122,6 +151,20 @@ export default function ProductsPage() {
         } else {
           setStrError('Failed to load products');
         }
+
+        // Load partners if user can manage partner pricing
+        if (fnCanManagePartnerPricing(objCurrentUser.strRole)) {
+          const objPartnersResponse = await fetch('/api/partners', {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+          const objPartnersData = await objPartnersResponse.json();
+          
+          if (objPartnersData.success) {
+            setArrPartners(objPartnersData.partners);
+          }
+        }
       } catch (error) {
         setStrError('Error loading data');
       } finally {
@@ -129,7 +172,7 @@ export default function ProductsPage() {
       }
     };
 
-    fnLoadUserAndProducts();
+    fnLoadUserAndData();
   }, [router]);
 
   const fnCreateProduct = async (objProductData: Omit<IProduct, 'strProductId' | 'dtCreated'>) => {
@@ -200,6 +243,16 @@ export default function ProductsPage() {
   const fnCloseEditModal = () => {
     setObjEditingProduct(null);
     setIsEditing(false);
+  };
+
+  const fnOpenPricingModal = (objProduct: IProduct) => {
+    setObjSelectedProduct(objProduct);
+    setIsManagingPricing(true);
+  };
+
+  const fnClosePricingModal = () => {
+    setObjSelectedProduct(null);
+    setIsManagingPricing(false);
   };
 
   const fnDeleteProduct = async (strProductId: string) => {
@@ -365,8 +418,10 @@ export default function ProductsPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {fnCanManageProducts(objUser?.strRole || '') ? (
                         <>
-                          <div>Base: ${objProduct.decBasePrice.toFixed(2)}</div>
-                          <div className="text-blue-600">Partner: ${objProduct.decPartnerPrice.toFixed(2)}</div>
+                          <div>Base: ${objProduct.decBasePrice?.toFixed(2) || '0.00'}</div>
+                          <div className="text-blue-600">
+                            Partner: ${(objProduct.decDisplayPrice || objProduct.decPartnerPrice || objProduct.decBasePrice)?.toFixed(2) || '0.00'}
+                          </div>
                           {objProduct.decDiscountRate && (
                             <div className="text-xs text-green-600">
                               {objProduct.decDiscountRate}% discount
@@ -376,7 +431,7 @@ export default function ProductsPage() {
                       ) : (
                         <>
                           <div className="text-lg font-semibold text-blue-600">
-                            ${objProduct.decPartnerPrice.toFixed(2)}
+                            ${(objProduct.decDisplayPrice || objProduct.decPartnerPrice || objProduct.decBasePrice)?.toFixed(2) || '0.00'}
                           </div>
                           {objProduct.decDiscountRate && (
                             <div className="text-xs text-green-600">
@@ -418,6 +473,14 @@ export default function ProductsPage() {
                         >
                           Edit
                         </button>
+                        {fnCanManagePartnerPricing(objUser?.strRole || '') && (
+                          <button
+                            onClick={() => fnOpenPricingModal(objProduct)}
+                            className="text-green-600 hover:text-green-900 mr-4"
+                          >
+                            Pricing
+                          </button>
+                        )}
                         <button
                           onClick={() => fnUpdateProduct(objProduct.strProductId, { bIsActive: !objProduct.bIsActive })}
                           className="text-indigo-600 hover:text-indigo-900 mr-4"
@@ -450,6 +513,219 @@ export default function ProductsPage() {
           isLoading={bIsEditing}
         />
       )}
+
+      {/* Partner Pricing Modal - Only show for users who can manage partner pricing */}
+      {bIsManagingPricing && objSelectedProduct && fnCanManagePartnerPricing(objUser?.strRole || '') && (
+        <PartnerPricingModal
+          product={objSelectedProduct}
+          partners={arrPartners}
+          onClose={fnClosePricingModal}
+        />
+      )}
+    </div>
+  );
+}
+
+// Partner Pricing Modal Component
+function PartnerPricingModal({ 
+  product, 
+  partners,
+  onClose 
+}: { 
+  product: IProduct;
+  partners: IPartner[];
+  onClose: () => void;
+}) {
+  const [arrPartnerPrices, setArrPartnerPrices] = useState<IPartnerPrice[]>([]);
+  const [bIsLoading, setIsLoading] = useState(true);
+  const [bIsSaving, setIsSaving] = useState(false);
+  const [strError, setStrError] = useState('');
+
+  useEffect(() => {
+    const fnLoadPartnerPrices = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Load partner prices for this product
+        const arrPrices: IPartnerPrice[] = [];
+        
+        for (const partner of partners) {
+          const response = await fetch(`/api/partners/${partner.strPartnerId}/prices`);
+          const data = await response.json();
+          
+          if (data.success) {
+            const productPrice = data.products.find((p: any) => p.strProductId === product.strProductId);
+            if (productPrice) {
+              arrPrices.push({
+                strProductId: product.strProductId,
+                decPartnerPrice: productPrice.decPartnerPrice,
+                bHasCustomPrice: productPrice.bHasCustomPrice
+              });
+            }
+          }
+        }
+        
+        setArrPartnerPrices(arrPrices);
+      } catch (error) {
+        setStrError('Error loading partner prices');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fnLoadPartnerPrices();
+  }, [product.strProductId, partners]);
+
+  const fnUpdatePartnerPrice = async (strPartnerId: string, decPartnerPrice: number) => {
+    try {
+      setIsSaving(true);
+      
+      const response = await fetch(`/api/partners/${strPartnerId}/prices`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          arrPrices: [{
+            strProductId: product.strProductId,
+            decPartnerPrice: decPartnerPrice
+          }]
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        // Update local state
+        setArrPartnerPrices(prev => 
+          prev.map(price => 
+            price.strProductId === product.strProductId 
+              ? { ...price, decPartnerPrice, bHasCustomPrice: true }
+              : price
+          )
+        );
+      } else {
+        setStrError('Failed to update partner price');
+      }
+    } catch (error) {
+      setStrError('Error updating partner price');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const fnResetToBasePrice = async (strPartnerId: string) => {
+    await fnUpdatePartnerPrice(strPartnerId, product.decBasePrice);
+  };
+
+  if (bIsLoading) {
+    return (
+      <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading partner pricing...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+      <div className="relative top-10 mx-auto p-5 border w-4/5 max-w-4xl shadow-lg rounded-md bg-white">
+        <div className="mt-3">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-medium text-gray-900">
+              Partner Pricing for: {product.strProductName}
+            </h3>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {strError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <p className="text-red-700">{strError}</p>
+            </div>
+          )}
+
+          <div className="mb-4">
+            <p className="text-sm text-gray-600">
+              Base Price: <span className="font-semibold">${product.decBasePrice.toFixed(2)}</span>
+            </p>
+            <p className="text-sm text-gray-600">
+              Set custom prices for each partner. Leave empty to use base price.
+            </p>
+          </div>
+
+          <div className="space-y-4 max-h-96 overflow-y-auto">
+            {partners.map((partner) => {
+              const partnerPrice = arrPartnerPrices.find(p => p.strProductId === product.strProductId);
+              const currentPrice = partnerPrice?.decPartnerPrice || product.decBasePrice;
+              const hasCustomPrice = partnerPrice?.bHasCustomPrice || false;
+
+              return (
+                <div key={partner.strPartnerId} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-gray-900">{partner.strPartnerName}</h4>
+                      <p className="text-sm text-gray-500">{partner.strPartnerCode}</p>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <div className="text-right">
+                        <p className="text-sm text-gray-600">Current Price:</p>
+                        <p className={`font-semibold ${hasCustomPrice ? 'text-green-600' : 'text-gray-900'}`}>
+                          ${currentPrice.toFixed(2)}
+                        </p>
+                        {hasCustomPrice && (
+                          <p className="text-xs text-green-600">Custom Price</p>
+                        )}
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder={product.decBasePrice.toFixed(2)}
+                          className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
+                          onChange={(e) => {
+                            const value = parseFloat(e.target.value);
+                            if (!isNaN(value) && value > 0) {
+                              fnUpdatePartnerPrice(partner.strPartnerId, value);
+                            }
+                          }}
+                        />
+                        <button
+                          onClick={() => fnResetToBasePrice(partner.strPartnerId)}
+                          className="text-xs text-gray-500 hover:text-gray-700"
+                          title="Reset to base price"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex justify-end pt-4">
+            <button
+              onClick={onClose}
+              className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -651,7 +927,6 @@ function CreateProductForm({
       strProductCode: strProductName.toUpperCase().replace(/\s+/g, '_'),
       strDescription,
       decBasePrice: parseFloat(decBasePrice),
-      decPartnerPrice: parseFloat(decBasePrice), // Will be calculated by API
       strCategory,
       bIsActive: true,
       strDependencyId,
@@ -734,12 +1009,12 @@ function CreateProductForm({
           onChange={(e) => setStrDependencyId(e.target.value || undefined)}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-                          <option value="">No Dependency</option>
-                {products.map((product: IProduct) => (
-                  <option key={product.strProductId} value={product.strProductId}>
-                    {product.strProductName}
-                  </option>
-                ))}
+          <option value="">No Dependency</option>
+          {products.map((product: IProduct) => (
+            <option key={product.strProductId} value={product.strProductId}>
+              {product.strProductName}
+            </option>
+          ))}
         </select>
       </div>
       <div>

@@ -13,7 +13,8 @@ interface IProduct {
   strDescription: string;
   strCategory: string;
   decBasePrice: number;
-  decPartnerPrice: number;
+  decDisplayPrice?: number; // New field from API
+  decPartnerPrice?: number; // Optional for backward compatibility
   intStockQuantity: number;
   bIsActive: boolean;
 }
@@ -949,7 +950,9 @@ function CreateQuoteModal({
     if (strField === 'strProductId') {
       const objProduct = products.find(p => p.strProductId === value);
       if (objProduct) {
-        arrNewItems[intIndex].decUnitPrice = objProduct.decPartnerPrice;
+        // Use the display price (partner-specific price) if available, otherwise fall back to base price
+        const decPrice = objProduct.decDisplayPrice || objProduct.decPartnerPrice || objProduct.decBasePrice;
+        arrNewItems[intIndex].decUnitPrice = decPrice;
       }
     }
     
@@ -1077,11 +1080,11 @@ function CreateQuoteModal({
                           required
                         >
                           <option value="">Select a product</option>
-                          {products.map((product) => (
-                            <option key={product.strProductId} value={product.strProductId}>
-                              {product.strProductName} - ${product.decPartnerPrice}
-                            </option>
-                          ))}
+                                                      {products.map((product) => (
+                              <option key={product.strProductId} value={product.strProductId}>
+                                {product.strProductName} - ${(product.decDisplayPrice || product.decPartnerPrice || product.decBasePrice).toFixed(2)}
+                              </option>
+                            ))}
                         </select>
                       </div>
 
