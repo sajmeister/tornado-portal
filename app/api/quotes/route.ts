@@ -148,6 +148,18 @@ export async function POST(request: NextRequest) {
       if (!objItem.strProductId || !objItem.intQuantity || !objItem.decUnitPrice) {
         return NextResponse.json({ success: false, error: 'Invalid quote items' }, { status: 400 });
       }
+      
+      // For partner users, validate customer pricing
+      if (objUser.strRole === 'partner_admin' || objUser.strRole === 'partner_user') {
+        if (!objItem.decCustomerUnitPrice) {
+          return NextResponse.json({ success: false, error: 'Customer pricing required for partner users' }, { status: 400 });
+        }
+        
+        // Ensure customer price doesn't exceed partner price
+        if (objItem.decCustomerUnitPrice > objItem.decUnitPrice) {
+          return NextResponse.json({ success: false, error: 'Customer price cannot exceed partner price' }, { status: 400 });
+        }
+      }
     }
 
     // Determine partner ID for the quote
@@ -189,9 +201,18 @@ export async function POST(request: NextRequest) {
     const strQuoteNumber = `Q-${strDate}-${intRandom}`;
 
     // Calculate totals
-    const decSubtotal = arrItems.reduce((total: number, item: { intQuantity: number; decUnitPrice: number }) => total + (item.intQuantity * item.decUnitPrice), 0);
-    const decDiscountAmount = 0; // For now, no discount applied
-    const decTotal = decSubtotal - decDiscountAmount;
+    const decSubtotal = arrItems.reduce((total: number, item: { intQuantity: number; decUnitPrice: number }) => 
+      total + (item.intQuantity * item.decUnitPrice), 0);
+    
+    // For partner users, calculate customer totals; for others, customer = partner
+    const decCustomerSubtotal = arrItems.reduce((total: number, item: any) => {
+      const decCustomerPrice = item.decCustomerUnitPrice || item.decUnitPrice;
+      return total + (item.intQuantity * decCustomerPrice);
+    }, 0);
+    
+    const decDiscountAmount = 0; // For now, no additional discount applied
+    const decTotal = decCustomerSubtotal - decDiscountAmount; // Customer total
+    const decPartnerTotal = decSubtotal - decDiscountAmount; // Partner total (what provider gets paid)
 
     // Create the quote
     const objNewQuote = {
@@ -201,8 +222,10 @@ export async function POST(request: NextRequest) {
       strCreatedBy: strUserIdNonNull,
       strStatus: 'draft',
       decSubtotal,
+      decCustomerSubtotal,
       decDiscountAmount,
       decTotal,
+      decPartnerTotal,
       strNotes: strNotes || '',
       dtValidUntil: new Date(dtValidUntil),
       dtCreated: dtNow,
@@ -214,17 +237,23 @@ export async function POST(request: NextRequest) {
     await db.insert(tblQuotes).values(objNewQuote);
 
     // Insert quote items
-    const arrQuoteItems = arrItems.map((objItem: any, intIndex: number) => ({
-      strQuoteItemId: `quote_item_${Date.now()}_${intIndex}_${Math.random().toString(36).substr(2, 9)}`,
-      strQuoteId: objNewQuote.strQuoteId,
-      strProductId: objItem.strProductId,
-      intQuantity: objItem.intQuantity,
-      decUnitPrice: objItem.decUnitPrice,
-      decLineTotal: objItem.intQuantity * objItem.decUnitPrice,
-      strNotes: objItem.strNotes || '',
-      dtCreated: dtNow,
-      bIsActive: true,
-    }));
+    const arrQuoteItems = arrItems.map((objItem: any, intIndex: number) => {
+      const decCustomerUnitPrice = objItem.decCustomerUnitPrice || objItem.decUnitPrice;
+      
+      return {
+        strQuoteItemId: `quote_item_${Date.now()}_${intIndex}_${Math.random().toString(36).substr(2, 9)}`,
+        strQuoteId: objNewQuote.strQuoteId,
+        strProductId: objItem.strProductId,
+        intQuantity: objItem.intQuantity,
+        decUnitPrice: objItem.decUnitPrice,
+        decCustomerUnitPrice: decCustomerUnitPrice,
+        decLineTotal: objItem.intQuantity * objItem.decUnitPrice,
+        decCustomerLineTotal: objItem.intQuantity * decCustomerUnitPrice,
+        strNotes: objItem.strNotes || '',
+        dtCreated: dtNow,
+        bIsActive: true,
+      };
+    });
 
     await db.insert(tblQuoteItems).values(arrQuoteItems);
 

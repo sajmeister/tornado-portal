@@ -25,8 +25,10 @@ interface IQuoteItem {
   strProductName: string;
   strProductCode: string;
   intQuantity: number;
-  decUnitPrice: number;
-  decLineTotal: number;
+  decUnitPrice: number; // Partner unit price (what provider gets paid)
+  decCustomerUnitPrice: number; // Customer unit price (what partner charges customer)
+  decLineTotal: number; // Partner line total (what provider gets paid)
+  decCustomerLineTotal: number; // Customer line total (what partner charges customer)
   strNotes: string;
 }
 
@@ -36,9 +38,11 @@ interface IQuote {
   strPartnerId: string;
   strCreatedBy: string;
   strStatus: string;
-  decSubtotal: number;
+  decSubtotal: number; // Partner subtotal (what provider gets paid)
+  decCustomerSubtotal: number; // Customer subtotal (what partner charges customer)
   decDiscountAmount: number;
-  decTotal: number;
+  decTotal: number; // Customer total (what customer pays)
+  decPartnerTotal: number; // Partner total (what provider gets paid)
   strNotes: string;
   dtValidUntil: string;
   dtCreated: string;
@@ -165,13 +169,15 @@ export default function QuotesPage() {
     arrItems: Array<{
       strProductId: string;
       intQuantity: number;
-      decUnitPrice: number;
+      decUnitPrice: number; // Partner price (what provider gets paid)
+      decCustomerUnitPrice: number; // Customer price (what partner charges customer)
       strNotes: string;
     }>;
   }) => {
     try {
       setIsCreating(true);
-      const objResponse = await fetch('/api/quotes', {
+      
+      const response = await fetch('/api/quotes', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -179,22 +185,24 @@ export default function QuotesPage() {
         body: JSON.stringify(objQuoteData),
       });
 
-      const objData = await objResponse.json();
+      const data = await response.json();
       
-      if (objData.success) {
-        // Reload quotes
+      if (data.success) {
+        // Reload quotes to show the new quote
         const objQuotesResponse = await fetch('/api/quotes');
         const objQuotesData = await objQuotesResponse.json();
         if (objQuotesData.success) {
           setArrQuotes(objQuotesData.quotes);
         }
+        setIsCreating(false);
         setBShowCreateModal(false);
       } else {
-        setStrError(objData.error || 'Failed to create quote');
+        alert('Error creating quote: ' + data.error);
+        setIsCreating(false);
       }
     } catch (error) {
-      setStrError('Error creating quote');
-    } finally {
+      console.error('Error creating quote:', error);
+      alert('Error creating quote');
       setIsCreating(false);
     }
   };
@@ -912,7 +920,8 @@ function CreateQuoteModal({
     arrItems: Array<{
       strProductId: string;
       intQuantity: number;
-      decUnitPrice: number;
+      decUnitPrice: number; // Partner price (what provider gets paid)
+      decCustomerUnitPrice: number; // Customer price (what partner charges customer)
       strNotes: string;
     }>;
   }) => void;
@@ -927,9 +936,13 @@ function CreateQuoteModal({
   const [arrItems, setArrItems] = useState<Array<{
     strProductId: string;
     intQuantity: number;
-    decUnitPrice: number;
+    decUnitPrice: number; // Partner price (what provider gets paid)
+    decCustomerUnitPrice: number; // Customer price (what partner charges customer)
     strNotes: string;
   }>>([]);
+
+  // Check if user is a partner (can set customer pricing)
+  const bIsPartnerUser = objUser?.strRole === 'partner_admin' || objUser?.strRole === 'partner_user';
 
   // Load partner pricing when partner is selected
   const fnLoadPartnerPrices = async (strPartnerId: string) => {
@@ -974,11 +987,12 @@ function CreateQuoteModal({
           if (objProduct) {
             // Find partner-specific price
             const partnerPrice = arrPartnerPrices.find(p => p.strProductId === item.strProductId);
-            const decNewPrice = partnerPrice?.decPartnerPrice || objProduct.decBasePrice;
+            const decPartnerPrice = partnerPrice?.decPartnerPrice || objProduct.decBasePrice;
             
             return {
               ...item,
-              decUnitPrice: decNewPrice
+              decUnitPrice: decPartnerPrice,
+              decCustomerUnitPrice: decPartnerPrice // Default customer price same as partner price
             };
           }
         }
@@ -1007,6 +1021,7 @@ function CreateQuoteModal({
       strProductId: '',
       intQuantity: 1,
       decUnitPrice: 0,
+      decCustomerUnitPrice: 0,
       strNotes: ''
     }]);
   };
@@ -1019,10 +1034,11 @@ function CreateQuoteModal({
     const arrNewItems = [...arrItems];
     arrNewItems[intIndex] = { ...arrNewItems[intIndex], [strField]: value };
     
-    // Auto-calculate unit price when product is selected
+    // Auto-calculate unit prices when product is selected
     if (strField === 'strProductId') {
-      const decPrice = fnGetProductPrice(value as string);
-      arrNewItems[intIndex].decUnitPrice = decPrice;
+      const decPartnerPrice = fnGetProductPrice(value as string);
+      arrNewItems[intIndex].decUnitPrice = decPartnerPrice;
+      arrNewItems[intIndex].decCustomerUnitPrice = decPartnerPrice; // Default customer price same as partner price
     }
     
     setArrItems(arrNewItems);
@@ -1038,12 +1054,21 @@ function CreateQuoteModal({
     }
 
     const arrValidItems = arrItems.filter(item => 
-      item.strProductId && item.intQuantity > 0 && item.decUnitPrice > 0
+      item.strProductId && item.intQuantity > 0 && item.decUnitPrice > 0 && item.decCustomerUnitPrice > 0
     );
 
     if (arrValidItems.length === 0) {
       alert('Please fill in all required fields for quote items');
       return;
+    }
+
+    // Validate that customer prices don't exceed partner prices (for partner users)
+    if (bIsPartnerUser) {
+      const arrInvalidItems = arrValidItems.filter(item => item.decCustomerUnitPrice > item.decUnitPrice);
+      if (arrInvalidItems.length > 0) {
+        alert('Customer prices cannot exceed partner prices. Any discount comes at your expense.');
+        return;
+      }
     }
 
     onSubmit({
@@ -1054,17 +1079,32 @@ function CreateQuoteModal({
     });
   };
 
-  const fnCalculateTotal = (): number => {
+  const fnCalculatePartnerTotal = (): number => {
     return arrItems.reduce((total, item) => {
       return total + (item.intQuantity * item.decUnitPrice);
     }, 0);
   };
 
+  const fnCalculateCustomerTotal = (): number => {
+    return arrItems.reduce((total, item) => {
+      return total + (item.intQuantity * item.decCustomerUnitPrice);
+    }, 0);
+  };
+
+  const fnCalculatePartnerMargin = (): number => {
+    return fnCalculatePartnerTotal() - fnCalculateCustomerTotal();
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">Create New Quote</h2>
+          {bIsPartnerUser && (
+            <p className="text-sm text-blue-600 mt-1">
+              You can offer customer discounts. Any discount comes at your expense.
+            </p>
+          )}
         </div>
 
         <form onSubmit={fnHandleSubmit} className="p-6">
@@ -1149,7 +1189,7 @@ function CreateQuoteModal({
               <div className="space-y-4">
                 {arrItems.map((item, index) => (
                   <div key={index} className="border border-gray-200 rounded-lg p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Product
@@ -1192,7 +1232,7 @@ function CreateQuoteModal({
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Unit Price
+                          {bIsPartnerUser ? 'Partner Price' : 'Unit Price'}
                         </label>
                         <input
                           type="number"
@@ -1202,6 +1242,7 @@ function CreateQuoteModal({
                           onChange={(e) => fnUpdateItem(index, 'decUnitPrice', parseFloat(e.target.value) || 0)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                           required
+                          readOnly={!bIsPartnerUser} // Only partners can edit partner prices
                         />
                         {item.strProductId && strPartnerId && (
                           <p className="text-xs text-gray-500 mt-1">
@@ -1217,13 +1258,49 @@ function CreateQuoteModal({
                         )}
                       </div>
 
+                      {bIsPartnerUser && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Customer Price
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.decCustomerUnitPrice}
+                            onChange={(e) => fnUpdateItem(index, 'decCustomerUnitPrice', parseFloat(e.target.value) || 0)}
+                            className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                              item.decCustomerUnitPrice > item.decUnitPrice ? 'border-red-300' : 'border-gray-300'
+                            }`}
+                            required
+                          />
+                          {item.decCustomerUnitPrice > item.decUnitPrice && (
+                            <p className="text-xs text-red-600 mt-1">
+                              Cannot exceed partner price
+                            </p>
+                          )}
+                          {item.decCustomerUnitPrice < item.decUnitPrice && (
+                            <p className="text-xs text-orange-600 mt-1">
+                              Discount: ${((item.decUnitPrice - item.decCustomerUnitPrice) * item.intQuantity).toFixed(2)}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
                       <div className="flex items-end space-x-2">
                         <div className="flex-1">
                           <label className="block text-sm font-medium text-gray-700 mb-1">
                             Line Total
                           </label>
                           <div className="px-3 py-2 bg-gray-50 border border-gray-300 rounded-md text-sm font-medium">
-                            ${(item.intQuantity * item.decUnitPrice).toFixed(2)}
+                            {bIsPartnerUser ? (
+                              <div>
+                                <div>Partner: ${(item.intQuantity * item.decUnitPrice).toFixed(2)}</div>
+                                <div className="text-blue-600">Customer: ${(item.intQuantity * item.decCustomerUnitPrice).toFixed(2)}</div>
+                              </div>
+                            ) : (
+                              `$${(item.intQuantity * item.decUnitPrice).toFixed(2)}`
+                            )}
                           </div>
                         </div>
                         <button
@@ -1257,26 +1334,51 @@ function CreateQuoteModal({
           </div>
 
           <div className="border-t border-gray-200 pt-4">
-            <div className="flex justify-between items-center">
-              <div className="text-lg font-semibold text-gray-900">
-                Total: ${fnCalculateTotal().toFixed(2)}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="text-center p-4 bg-gray-50 rounded-lg">
+                <div className="text-sm text-gray-600">Partner Total</div>
+                <div className="text-lg font-semibold text-gray-900">
+                  ${fnCalculatePartnerTotal().toFixed(2)}
+                </div>
+                <div className="text-xs text-gray-500">What provider gets paid</div>
               </div>
-              <div className="flex space-x-3">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {isLoading ? 'Creating...' : 'Create Quote'}
-                </button>
-              </div>
+              
+              {bIsPartnerUser && (
+                <>
+                  <div className="text-center p-4 bg-blue-50 rounded-lg">
+                    <div className="text-sm text-blue-600">Customer Total</div>
+                    <div className="text-lg font-semibold text-blue-700">
+                      ${fnCalculateCustomerTotal().toFixed(2)}
+                    </div>
+                    <div className="text-xs text-blue-500">What customer pays</div>
+                  </div>
+                  
+                  <div className="text-center p-4 bg-orange-50 rounded-lg">
+                    <div className="text-sm text-orange-600">Your Margin</div>
+                    <div className={`text-lg font-semibold ${fnCalculatePartnerMargin() >= 0 ? 'text-orange-700' : 'text-red-600'}`}>
+                      ${fnCalculatePartnerMargin().toFixed(2)}
+                    </div>
+                    <div className="text-xs text-orange-500">Your profit/loss</div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isLoading ? 'Creating...' : 'Create Quote'}
+              </button>
             </div>
           </div>
         </form>

@@ -68,9 +68,11 @@ export const tblQuotes = sqliteTable('tblQuotes', {
   strPartnerId: text('strPartnerId').notNull(),
   strCreatedBy: text('strCreatedBy').notNull(),
   strStatus: text('strStatus').notNull(),
-  decSubtotal: real('decSubtotal').notNull(),
+  decSubtotal: real('decSubtotal').notNull(), // Partner price subtotal (what provider gets paid)
+  decCustomerSubtotal: real('decCustomerSubtotal').notNull(), // Customer price subtotal (what partner charges customer)
   decDiscountAmount: real('decDiscountAmount').notNull(),
-  decTotal: real('decTotal').notNull(),
+  decTotal: real('decTotal').notNull(), // Customer total (what customer pays)
+  decPartnerTotal: real('decPartnerTotal').notNull(), // Partner total (what provider gets paid)
   strNotes: text('strNotes'),
   dtValidUntil: integer('dtValidUntil', { mode: 'timestamp' }),
   dtCreated: integer('dtCreated', { mode: 'timestamp' }),
@@ -84,8 +86,10 @@ export const tblQuoteItems = sqliteTable('tblQuoteItems', {
   strQuoteId: text('strQuoteId').notNull(),
   strProductId: text('strProductId').notNull(),
   intQuantity: integer('intQuantity').notNull(),
-  decUnitPrice: real('decUnitPrice').notNull(),
-  decLineTotal: real('decLineTotal').notNull(),
+  decUnitPrice: real('decUnitPrice').notNull(), // Partner unit price (what provider gets paid)
+  decCustomerUnitPrice: real('decCustomerUnitPrice').notNull(), // Customer unit price (what partner charges customer)
+  decLineTotal: real('decLineTotal').notNull(), // Partner line total (what provider gets paid)
+  decCustomerLineTotal: real('decCustomerLineTotal').notNull(), // Customer line total (what partner charges customer)
   strNotes: text('strNotes'),
   dtCreated: integer('dtCreated', { mode: 'timestamp' }),
   bIsActive: integer('bIsActive', { mode: 'boolean' }),
