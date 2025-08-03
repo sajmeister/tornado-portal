@@ -3,7 +3,7 @@ import { db } from '@/src/lib/db';
 import { tblUsers } from '@/src/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
-// GET /api/users - Get all users (for partner user management)
+// GET /api/users - Get all users (for partner customer management)
 export async function GET(request: NextRequest) {
   try {
     // Get user info from middleware headers

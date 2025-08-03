@@ -47,8 +47,8 @@ export async function GET(
       });
     }
 
-    // Partner users can only see their own partner
-    if (strUserRoleNonNull === EUserRole.PARTNER_ADMIN || strUserRoleNonNull === EUserRole.PARTNER_USER) {
+    // Partner customers can only see their own partner
+          if (strUserRoleNonNull === EUserRole.PARTNER_ADMIN || strUserRoleNonNull === EUserRole.PARTNER_CUSTOMER) {
       // Check if user belongs to this partner
       const arrPartnerUsers = await db
         .select({

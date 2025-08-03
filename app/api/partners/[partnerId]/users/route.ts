@@ -4,7 +4,7 @@ import { tblPartnerUsers, tblPartners, tblUsers } from '@/src/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { EUserRole } from '@/src/lib/roles';
 
-// GET /api/partners/[partnerId]/users - Get partner users
+// GET /api/partners/[partnerId]/users - Get partner customers
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ partnerId: string }> }
@@ -23,7 +23,7 @@ export async function GET(
     const strUserIdNonNull = strUserId as string;
     const strUserRoleNonNull = strUserRole as string;
     
-    // Check if user has permission to view partner users
+    // Check if user has permission to view partner customers
     if (!['super_admin', 'partner_admin'].includes(strUserRoleNonNull)) {
       return NextResponse.json({ 
         success: false, 
@@ -51,7 +51,7 @@ export async function GET(
       }
     }
 
-    // Get partner users with user details
+    // Get partner customers with user details
     const arrPartnerUsers = await db
       .select({
         strPartnerUserId: tblPartnerUsers.strPartnerUserId,
@@ -80,7 +80,7 @@ export async function GET(
     });
 
   } catch (error) {
-    console.error('Error fetching partner users:', error);
+          console.error('Error fetching partner customers:', error);
     return NextResponse.json({ 
       success: false, 
       error: 'Internal server error' 
@@ -107,7 +107,7 @@ export async function POST(
     const strUserIdNonNull = strUserId as string;
     const strUserRoleNonNull = strUserRole as string;
 
-    // Check if user has permission to manage partner users
+    // Check if user has permission to manage partner customers
     if (!['super_admin', 'partner_admin'].includes(strUserRoleNonNull)) {
       return NextResponse.json({ 
         success: false, 
@@ -147,7 +147,7 @@ export async function POST(
     }
 
     // Validate role
-    if (!['partner_user', 'partner_admin'].includes(strRole)) {
+          if (!['partner_customer', 'partner_admin'].includes(strRole)) {
       return NextResponse.json({ 
         success: false, 
         error: 'Invalid role' 
@@ -204,7 +204,7 @@ export async function POST(
     }
 
     // Create partner user association
-    const strPartnerUserId = `partner_user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          const strPartnerUserId = `partner_customer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const dtNow = new Date();
 
     const arrNewPartnerUser = await db

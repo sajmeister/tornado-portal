@@ -146,13 +146,13 @@ export default function RolesPage() {
                 <div className="flex items-center space-x-4 ml-8">
                   <div className="flex-1">
                     <div className="text-sm font-medium text-gray-900">Partner Admin</div>
-                    <div className="text-xs text-gray-500">Can manage partner users and quotes</div>
+                    <div className="text-xs text-gray-500">Can manage partner customers and quotes</div>
                   </div>
                   <div className="text-gray-400">↓</div>
                 </div>
                 <div className="flex items-center space-x-4 ml-12">
                   <div className="flex-1">
-                    <div className="text-sm font-medium text-gray-900">Partner User</div>
+                    <div className="text-sm font-medium text-gray-900">Partner Customer</div>
                     <div className="text-xs text-gray-500">Can create quotes and view orders</div>
                   </div>
                   <div className="text-gray-400">↓</div>

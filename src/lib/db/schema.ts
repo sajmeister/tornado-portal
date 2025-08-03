@@ -138,7 +138,7 @@ export const tblOrderStatusHistory = sqliteTable('tblOrderStatusHistory', {
   dtCreated: integer('dtCreated', { mode: 'timestamp' }),
 });
 
-// Partner users table
+// Partner customers table
 export const tblPartnerUsers = sqliteTable('tblPartnerUsers', {
   strPartnerUserId: text('strPartnerUserId').primaryKey(),
   strUserId: text('strUserId').notNull(),

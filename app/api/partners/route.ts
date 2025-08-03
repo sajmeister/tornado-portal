@@ -33,8 +33,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Partner users can only see their own partner
-    if (strUserRoleNonNull === EUserRole.PARTNER_ADMIN || strUserRoleNonNull === EUserRole.PARTNER_USER) {
+    // Partner customers can only see their own partner
+          if (strUserRoleNonNull === EUserRole.PARTNER_ADMIN || strUserRoleNonNull === EUserRole.PARTNER_CUSTOMER) {
       // Get user's partner through tblPartnerUsers
       const arrPartnerUsers = await db
         .select({

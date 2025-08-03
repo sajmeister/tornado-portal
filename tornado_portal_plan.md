@@ -170,16 +170,16 @@ TURSO_AUTH_TOKEN=your-turso-token
 - [x] ✅ **COMPLETED: Implemented basic partner isolation**
 - [x] ✅ **COMPLETED: Created partner admin capabilities**
 - [x] ✅ **COMPLETED: Added partner-specific product pricing**
-- [x] ✅ **COMPLETED: Implemented basic user roles (Partner Admin, Partner User)**
+- [x] ✅ **COMPLETED: Implemented basic user roles (Partner Admin, Partner Customer)**
 - [x] ✅ **COMPLETED: Created partner management interface**
 - [x] ✅ **COMPLETED: Implemented role-based access control (RBAC)**
 - [x] ✅ **COMPLETED: Added partner-specific discount rates**
-- [x] ✅ **COMPLETED: Created partner user management**
+- [x] ✅ **COMPLETED: Created partner customer management**
 - [x] ✅ **COMPLETED: Implemented comprehensive security protections**
 - [x] ✅ **COMPLETED: Fixed Orphaned Users page visibility**
 
 **Security Features Implemented**:
-- [x] ✅ **Self-removal prevention** for Partner Users and Orphaned Users pages
+- [x] ✅ **Self-removal prevention** for Partner Customers and Orphaned Users pages
 - [x] ✅ **Last admin protection** for Partner organizations (prevents last Partner Admin from being removed/demoted)
 - [x] ✅ **Last Super Admin protection** for Provider organization (prevents last Super Admin from being deleted/demoted)
 - [x] ✅ **User role update endpoint** with Super Admin protection
@@ -567,6 +567,7 @@ tornado-portal/
 187. ✅ Ensured provider always gets paid the full partner price regardless of customer pricing
 188. ✅ **UPDATED: Enhanced visual feedback to show extra margin (green) vs discount (orange) indicators**
 189. ✅ **FIXED: Corrected margin calculation logic - now properly shows profit (positive) vs discount (negative)**
+190. ✅ **RENAMED: Changed "Partner User" to "Partner Customer" throughout the codebase for better clarity**
 
 ### Next Session Goals:
 1. [x] ✅ **COMPLETED: Partner Product Access Implementation**

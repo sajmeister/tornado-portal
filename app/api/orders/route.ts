@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       // Admin/Provider users can see all orders
       arrOrders = await db.select().from(tblOrders).where(eq(tblOrders.bIsActive, true)).orderBy(desc(tblOrders.dtCreated));
     } else {
-      // Partner users can only see orders from their partner
+      // Partner customers can only see orders from their partner
       const strPartnerId = await fnGetUserPartnerId(strUserIdNonNull);
       if (!strPartnerId) {
         return NextResponse.json({ success: false, error: 'User not associated with any partner' }, { status: 403 });

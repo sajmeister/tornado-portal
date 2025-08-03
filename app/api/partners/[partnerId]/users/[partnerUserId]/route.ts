@@ -4,7 +4,7 @@ import { tblPartnerUsers } from '@/src/lib/db/schema';
 import { eq, and, ne } from 'drizzle-orm';
 import { EUserRole } from '@/src/lib/roles';
 
-// PUT /api/partners/[partnerId]/users/[partnerUserId] - Update partner user role
+// PUT /api/partners/[partnerId]/users/[partnerUserId] - Update partner customer role
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ partnerId: string; partnerUserId: string }> }
@@ -63,7 +63,7 @@ export async function PUT(
     }
 
     // Validate role
-    if (!['partner_user', 'partner_admin'].includes(strRole)) {
+    if (!['partner_customer', 'partner_admin'].includes(strRole)) {
       return NextResponse.json({ 
         success: false, 
         error: 'Invalid role' 
@@ -90,8 +90,8 @@ export async function PUT(
 
     const objPartnerUser = arrPartnerUser[0];
 
-    // Check if this is the last admin trying to change their role to user
-    if (objPartnerUser.strRole === 'partner_admin' && strRole === 'partner_user') {
+    // Check if this is the last admin trying to change their role to customer
+    if (objPartnerUser.strRole === 'partner_admin' && strRole === 'partner_customer') {
       // Count how many other admins exist for this partner (excluding the current user)
       const arrOtherAdmins = await db
         .select()
@@ -106,12 +106,12 @@ export async function PUT(
       if (arrOtherAdmins.length === 0) {
         return NextResponse.json({ 
           success: false, 
-          error: 'Cannot change role to Partner User. This would leave the organization without any administrators. At least one administrator must remain.' 
+          error: 'Cannot change role to Partner Customer. This would leave the organization without any administrators. At least one administrator must remain.' 
         }, { status: 400 });
       }
     }
 
-    // Update partner user role
+    // Update partner customer role
     const dtNow = new Date();
 
     const arrUpdatedPartnerUser = await db

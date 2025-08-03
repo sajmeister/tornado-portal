@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       // Admin/Provider users can see all quotes
       arrQuotes = await db.select().from(tblQuotes).where(eq(tblQuotes.bIsActive, true)).orderBy(desc(tblQuotes.dtCreated));
     } else {
-      // Partner users can see quotes from their partner, but with special filtering for draft quotes
+      // Partner customers can see quotes from their partner, but with special filtering for draft quotes
       const strPartnerId = await fnGetUserPartnerId(strUserIdNonNull);
       if (!strPartnerId) {
         return NextResponse.json({ success: false, error: 'User not associated with any partner' }, { status: 403 });
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
     const objUser = arrUsers[0];
 
     // Check if user has permission to create quotes
-    const arrAllowedRoles = ['super_admin', 'provider_user', 'partner_admin', 'partner_user'];
+    const arrAllowedRoles = ['super_admin', 'provider_user', 'partner_admin', 'partner_customer'];
     if (!objUser.strRole || !arrAllowedRoles.includes(objUser.strRole)) {
       return NextResponse.json({ success: false, error: 'Insufficient permissions' }, { status: 403 });
     }
@@ -149,10 +149,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'Invalid quote items' }, { status: 400 });
       }
       
-      // For partner users, validate customer pricing exists but allow any value
-      if (objUser.strRole === 'partner_admin' || objUser.strRole === 'partner_user') {
+      // For partner customers, validate customer pricing exists but allow any value
+      if (objUser.strRole === 'partner_admin' || objUser.strRole === 'partner_customer') {
         if (!objItem.decCustomerUnitPrice) {
-          return NextResponse.json({ success: false, error: 'Customer pricing required for partner users' }, { status: 400 });
+          return NextResponse.json({ success: false, error: 'Customer pricing required for partner customers' }, { status: 400 });
         }
         // Partners can charge more (extra margin) or less (discount) than partner prices - no validation needed
       }
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
         strPartnerId = arrPartners[0].strPartnerId;
       }
     } else {
-      // For Partner users, get their associated partner
+      // For Partner customers, get their associated partner
       const strUserPartnerId = await fnGetUserPartnerId(strUserIdNonNull);
       if (!strUserPartnerId) {
         return NextResponse.json({ success: false, error: 'User not associated with any partner' }, { status: 403 });
@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
     const decSubtotal = arrItems.reduce((total: number, item: { intQuantity: number; decUnitPrice: number }) => 
       total + (item.intQuantity * item.decUnitPrice), 0);
     
-    // For partner users, calculate customer totals; for others, customer = partner
+    // For partner customers, calculate customer totals; for others, customer = partner
     const decCustomerSubtotal = arrItems.reduce((total: number, item: any) => {
       const decCustomerPrice = item.decCustomerUnitPrice || item.decUnitPrice;
       return total + (item.intQuantity * decCustomerPrice);

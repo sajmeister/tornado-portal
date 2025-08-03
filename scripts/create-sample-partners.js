@@ -113,8 +113,8 @@ async function fnCreateSamplePartners() {
       // Partner admin users
       { strUserId: 'user_1754135651972_ubs3losvv', strPartnerId: 'partner_acme_corp', strRole: 'partner_admin' },
       
-      // Partner users
-      { strUserId: 'user_1754135652302_rni232413', strPartnerId: 'partner_acme_corp', strRole: 'partner_user' },
+      // Partner customers
+      { strUserId: 'user_1754135652302_rni232413', strPartnerId: 'partner_acme_corp', strRole: 'partner_customer' },
     ];
 
     for (const objAssociation of arrPartnerAssociations) {
@@ -124,7 +124,7 @@ async function fnCreateSamplePartners() {
         ) VALUES (?, ?, ?, ?, ?, ?, ?)
       `;
 
-      const strPartnerUserId = `partner_user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const strPartnerUserId = `partner_customer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const dtNow = new Date();
 
       await client.execute({

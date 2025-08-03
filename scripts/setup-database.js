@@ -53,7 +53,7 @@ async function setupDatabase() {
     `);
     console.log('✅ Partners table created');
 
-    // Create partner users table
+    // Create partner customers table
     await client.execute(`
       CREATE TABLE IF NOT EXISTS tblPartnerUsers (
         strPartnerUserId TEXT PRIMARY KEY,
@@ -65,7 +65,7 @@ async function setupDatabase() {
         bIsActive INTEGER DEFAULT 1
       )
     `);
-    console.log('✅ Partner Users table created');
+    console.log('✅ Partner Customers table created');
 
     // Create products table
     await client.execute(`

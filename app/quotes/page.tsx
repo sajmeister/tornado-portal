@@ -90,7 +90,7 @@ export default function QuotesPage() {
 
   // Check if user has permission to manage quotes
   const fnCanManageQuotes = (strRole: string): boolean => {
-    return ['super_admin', 'provider_user', 'partner_admin', 'partner_user'].includes(strRole);
+    return ['super_admin', 'provider_user', 'partner_admin', 'partner_customer'].includes(strRole);
   };
 
   const handleLogout = async () => {
@@ -942,7 +942,7 @@ function CreateQuoteModal({
   }>>([]);
 
   // Check if user is a partner (can set customer pricing)
-  const bIsPartnerUser = objUser?.strRole === 'partner_admin' || objUser?.strRole === 'partner_user';
+  const bIsPartnerUser = objUser?.strRole === 'partner_admin' || objUser?.strRole === 'partner_customer';
 
   // Load partner pricing when partner is selected
   const fnLoadPartnerPrices = async (strPartnerId: string) => {

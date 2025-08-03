@@ -51,17 +51,17 @@ export default function PartnerUsersPage() {
     strEmail: '',
     strName: '',
     strPassword: '',
-    strRole: 'partner_user'
+    strRole: 'partner_customer'
   });
 
   // Edit user form state
   const [objEditingUser, setObjEditingUser] = useState<IPartnerUser | null>(null);
-  const [strEditingRole, setEditingRole] = useState('partner_user');
+  const [strEditingRole, setEditingRole] = useState('partner_customer');
   const router = useRouter();
   const params = useParams();
   const strPartnerId = params.partnerId as string;
 
-  // Check if user has permission to manage partner users
+  // Check if user has permission to manage partner customers
   const fnCanManagePartnerUsers = (strRole: string): boolean => {
     return fnHasPermission(strRole, 'user:manage_partner');
   };
@@ -88,11 +88,11 @@ export default function PartnerUsersPage() {
       if (objData.success) {
         setArrPartnerUsers(objData.users);
       } else {
-        setStrError(objData.error || 'Failed to load partner users');
+        setStrError(objData.error || 'Failed to load partner customers');
       }
     } catch (error) {
-      console.error('Error loading partner users:', error);
-      setStrError('Failed to load partner users');
+              console.error('Error loading partner customers:', error);
+        setStrError('Failed to load partner customers');
     }
   };
 
@@ -211,7 +211,7 @@ export default function PartnerUsersPage() {
       );
       
       if (arrAdmins.length === 0) {
-        setStrError('Cannot change your role to Partner User. You are the only administrator for this organization. At least one administrator must remain.');
+        setStrError('Cannot change your role to Partner Customer. You are the only administrator for this organization. At least one administrator must remain.');
         return;
       }
     }
@@ -291,12 +291,12 @@ export default function PartnerUsersPage() {
 
         // Check if user has permission
         if (!fnCanManagePartnerUsers(objCurrentUser.strRole)) {
-          setStrError('Access denied. You do not have permission to manage partner users.');
+          setStrError('Access denied. You do not have permission to manage partner customers.');
           setIsLoading(false);
           return;
         }
 
-        // Load partner, partner users, and all users
+        // Load partner, partner customers, and all users
         await Promise.all([
           fnLoadPartner(),
           fnLoadPartnerUsers()
@@ -320,7 +320,7 @@ export default function PartnerUsersPage() {
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <div className="px-4 py-6 sm:px-0">
             <div className="flex justify-center items-center h-64">
-              <div className="text-lg text-gray-600">Loading partner users...</div>
+              <div className="text-lg text-gray-600">Loading partner customers...</div>
             </div>
           </div>
         </div>
@@ -363,7 +363,7 @@ export default function PartnerUsersPage() {
           <div className="mb-8 flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                Partner Users - {objPartner?.strPartnerName}
+                Partner Customers - {objPartner?.strPartnerName}
               </h1>
               <p className="mt-2 text-sm text-gray-600">
                 Manage users for partner organization
@@ -383,7 +383,7 @@ export default function PartnerUsersPage() {
             )}
           </div>
 
-          {/* Partner Users List */}
+          {/* Partner Customers List */}
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
             {arrPartnerUsers.length === 0 ? (
               <div className="text-center py-12">
@@ -521,7 +521,7 @@ export default function PartnerUsersPage() {
                      onChange={(e) => fnHandleInputChange('strRole', e.target.value)}
                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                    >
-                     <option value="partner_user">Partner User</option>
+                     <option value="partner_customer">Partner Customer</option>
                      <option value="partner_admin">Partner Admin</option>
                    </select>
                  </div>
@@ -536,7 +536,7 @@ export default function PartnerUsersPage() {
                        strEmail: '',
                        strName: '',
                        strPassword: '',
-                       strRole: 'partner_user'
+                       strRole: 'partner_customer'
                      });
                      setStrError('');
                    }}
@@ -584,7 +584,7 @@ export default function PartnerUsersPage() {
                      onChange={(e) => setEditingRole(e.target.value)}
                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                    >
-                     <option value="partner_user">Partner User</option>
+                     <option value="partner_customer">Partner Customer</option>
                      <option value="partner_admin">Partner Admin</option>
                    </select>
                  </div>
@@ -595,7 +595,7 @@ export default function PartnerUsersPage() {
                    onClick={() => {
                      setShowEditUserModal(false);
                      setObjEditingUser(null);
-                     setEditingRole('partner_user');
+                     setEditingRole('partner_customer');
                      setStrError('');
                    }}
                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md"

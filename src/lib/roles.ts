@@ -4,7 +4,7 @@ export enum EUserRole {
   SUPER_ADMIN = 'super_admin',
   PROVIDER_USER = 'provider_user',
   PARTNER_ADMIN = 'partner_admin',
-  PARTNER_USER = 'partner_user',
+  PARTNER_CUSTOMER = 'partner_customer',
   END_USER = 'end_user'
 }
 
@@ -68,10 +68,10 @@ export const objRoleDefinitions: Record<EUserRole, IRoleDefinition> = {
       { strPermission: 'reports:view', strDescription: 'View partner reports', bIsGranted: true },
     ]
   },
-  [EUserRole.PARTNER_USER]: {
-    strRole: EUserRole.PARTNER_USER,
-    strDisplayName: 'Partner User',
-    strDescription: 'Partner company user with quote and order access',
+  [EUserRole.PARTNER_CUSTOMER]: {
+    strRole: EUserRole.PARTNER_CUSTOMER,
+    strDisplayName: 'Partner Customer',
+    strDescription: 'Partner company customer with quote and order access',
     arrPermissions: [
       { strPermission: 'user:view', strDescription: 'View users within own partner organization', bIsGranted: true },
       { strPermission: 'quote:create', strDescription: 'Create quotes', bIsGranted: true },
@@ -123,10 +123,10 @@ export function fnGetAllRoles(): IRoleDefinition[] {
 
 // Role hierarchy (for inheritance if needed)
 export const objRoleHierarchy: Record<EUserRole, EUserRole[]> = {
-  [EUserRole.SUPER_ADMIN]: [EUserRole.PROVIDER_USER, EUserRole.PARTNER_ADMIN, EUserRole.PARTNER_USER, EUserRole.END_USER],
-  [EUserRole.PROVIDER_USER]: [EUserRole.PARTNER_ADMIN, EUserRole.PARTNER_USER, EUserRole.END_USER],
-  [EUserRole.PARTNER_ADMIN]: [EUserRole.PARTNER_USER, EUserRole.END_USER],
-  [EUserRole.PARTNER_USER]: [EUserRole.END_USER],
+  [EUserRole.SUPER_ADMIN]: [EUserRole.PROVIDER_USER, EUserRole.PARTNER_ADMIN, EUserRole.PARTNER_CUSTOMER, EUserRole.END_USER],
+  [EUserRole.PROVIDER_USER]: [EUserRole.PARTNER_ADMIN, EUserRole.PARTNER_CUSTOMER, EUserRole.END_USER],
+  [EUserRole.PARTNER_ADMIN]: [EUserRole.PARTNER_CUSTOMER, EUserRole.END_USER],
+  [EUserRole.PARTNER_CUSTOMER]: [EUserRole.END_USER],
   [EUserRole.END_USER]: []
 };
 

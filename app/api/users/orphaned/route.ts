@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       .from(tblUsers)
       .where(eq(tblUsers.bIsActive, true));
 
-    // Get all active partner user associations
+    // Get all active partner customer associations
     const arrPartnerUsers = await db
       .select({
         strUserId: tblPartnerUsers.strUserId,

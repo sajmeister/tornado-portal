@@ -74,7 +74,7 @@ async function showUsers() {
     }
 
     console.log('\n💡 Test Partner Pricing:');
-    console.log('   1. Login as a Partner Admin or Partner User');
+    console.log('   1. Login as a Partner Admin or Partner Customer');
     console.log('   2. Navigate to Products page');
     console.log('   3. You should see partner-specific pricing (discounted)');
     console.log('   4. You should NOT see edit/delete buttons');
