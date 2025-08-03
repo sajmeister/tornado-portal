@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { fnHasPermission } from '../../src/lib/roles';
+import { fnCanBypassPartnerIsolation } from '../../src/lib/partner-utils';
 import CmpHeader from '../components/CmpHeader';
 
 interface IProduct {
@@ -55,9 +56,19 @@ interface IUser {
   bIsActive: boolean;
 }
 
+interface IPartner {
+  strPartnerId: string;
+  strPartnerName: string;
+  strPartnerCode: string;
+  strContactEmail: string;
+  decDiscountRate: number | null;
+  bIsActive: boolean;
+}
+
 export default function QuotesPage() {
   const [arrQuotes, setArrQuotes] = useState<IQuote[]>([]);
   const [arrProducts, setArrProducts] = useState<IProduct[]>([]);
+  const [arrPartners, setArrPartners] = useState<IPartner[]>([]);
   const [objUser, setObjUser] = useState<IUser | null>(null);
   const [bIsLoading, setIsLoading] = useState(true);
   const [bIsCreating, setIsCreating] = useState(false);
@@ -119,6 +130,15 @@ export default function QuotesPage() {
         if (objProductsData.success) {
           setArrProducts(objProductsData.products);
         }
+
+        // Load partners (for Super Admin/Provider users)
+        if (fnCanBypassPartnerIsolation(objCurrentUser.strRole)) {
+          const objPartnersResponse = await fetch('/api/partners');
+          const objPartnersData = await objPartnersResponse.json();
+          if (objPartnersData.success) {
+            setArrPartners(objPartnersData.partners);
+          }
+        }
       } catch (error) {
         setStrError('Error loading data');
       } finally {
@@ -132,6 +152,7 @@ export default function QuotesPage() {
   const fnCreateQuote = async (objQuoteData: {
     strNotes: string;
     dtValidUntil: string;
+    strPartnerId?: string;
     arrItems: Array<{
       strProductId: string;
       intQuantity: number;
@@ -250,7 +271,12 @@ export default function QuotesPage() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Quotes</h1>
-            <p className="text-gray-600 mt-2">Manage and create quotes for your partners</p>
+            <p className="text-gray-600 mt-2">
+              {objUser && fnCanBypassPartnerIsolation(objUser.strRole) 
+                ? "Manage and create quotes for your partners"
+                : "View and manage your quotes"
+              }
+            </p>
           </div>
           <button
             onClick={() => setBShowCreateModal(true)}
@@ -350,6 +376,8 @@ export default function QuotesPage() {
       {bShowCreateModal && (
         <CreateQuoteModal
           products={arrProducts}
+          partners={arrPartners}
+          objUser={objUser}
           onSubmit={fnCreateQuote}
           onClose={() => setBShowCreateModal(false)}
           isLoading={bIsCreating}
@@ -362,14 +390,19 @@ export default function QuotesPage() {
 // Create Quote Modal Component
 function CreateQuoteModal({ 
   products, 
+  partners,
+  objUser,
   onSubmit, 
   onClose, 
   isLoading 
 }: { 
   products: IProduct[];
+  partners: IPartner[];
+  objUser: IUser | null;
   onSubmit: (data: {
     strNotes: string;
     dtValidUntil: string;
+    strPartnerId?: string;
     arrItems: Array<{
       strProductId: string;
       intQuantity: number;
@@ -382,6 +415,7 @@ function CreateQuoteModal({
 }) {
   const [strNotes, setStrNotes] = useState('');
   const [dtValidUntil, setDtValidUntil] = useState('');
+  const [strPartnerId, setStrPartnerId] = useState('');
   const [arrItems, setArrItems] = useState<Array<{
     strProductId: string;
     intQuantity: number;
@@ -438,6 +472,7 @@ function CreateQuoteModal({
     onSubmit({
       strNotes,
       dtValidUntil,
+      strPartnerId: strPartnerId || undefined,
       arrItems: arrValidItems
     });
   };
@@ -469,6 +504,27 @@ function CreateQuoteModal({
                 required
               />
             </div>
+            
+            {/* Partner selection for Super Admin/Provider users */}
+            {objUser && fnCanBypassPartnerIsolation(objUser.strRole) && partners.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Partner
+                </label>
+                <select
+                  value={strPartnerId}
+                  onChange={(e) => setStrPartnerId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select a partner (optional)</option>
+                  {partners.map((partner) => (
+                    <option key={partner.strPartnerId} value={partner.strPartnerId}>
+                      {partner.strPartnerName} ({partner.strPartnerCode})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           <div className="mb-6">

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/src/lib/db';
-import { tblQuotes, tblQuoteItems, tblProducts, tblUsers } from '@/src/lib/db/schema';
+import { tblQuotes, tblQuoteItems, tblProducts, tblUsers, tblPartners } from '@/src/lib/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { fnGetUserPartnerId, fnCanBypassPartnerIsolation } from '@/src/lib/partners';
 
@@ -121,12 +121,35 @@ export async function POST(request: NextRequest) {
     }
 
     // Determine partner ID for the quote
-    let strPartnerId = 'default_partner'; // Default fallback
-    if (!fnCanBypassPartnerIsolation(objUser.strRole)) {
-      const strUserPartnerId = await fnGetUserPartnerId(strUserIdNonNull);
-      if (strUserPartnerId) {
-        strPartnerId = strUserPartnerId;
+    let strPartnerId: string;
+    
+    if (fnCanBypassPartnerIsolation(objUser.strRole)) {
+      // For Super Admin/Provider users, use the first available partner as default
+      // or allow them to specify a partner ID in the request body
+      const { strPartnerId: strRequestedPartnerId } = objBody;
+      
+      if (strRequestedPartnerId) {
+        // Validate that the requested partner exists
+        const arrPartners = await db.select().from(tblPartners).where(eq(tblPartners.strPartnerId, strRequestedPartnerId));
+        if (arrPartners.length === 0) {
+          return NextResponse.json({ success: false, error: 'Invalid partner ID' }, { status: 400 });
+        }
+        strPartnerId = strRequestedPartnerId;
+      } else {
+        // Use the first available partner as default
+        const arrPartners = await db.select().from(tblPartners).where(eq(tblPartners.bIsActive, true)).limit(1);
+        if (arrPartners.length === 0) {
+          return NextResponse.json({ success: false, error: 'No active partners found' }, { status: 500 });
+        }
+        strPartnerId = arrPartners[0].strPartnerId;
       }
+    } else {
+      // For Partner users, get their associated partner
+      const strUserPartnerId = await fnGetUserPartnerId(strUserIdNonNull);
+      if (!strUserPartnerId) {
+        return NextResponse.json({ success: false, error: 'User not associated with any partner' }, { status: 403 });
+      }
+      strPartnerId = strUserPartnerId;
     }
 
     // Generate quote number (Q-YYYYMMDD-XXXX format)
