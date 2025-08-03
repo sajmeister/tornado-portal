@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { fnGetRoleDisplayName, fnGetRoleDescription, fnGetRolePermissions, fnHasPermission } from '../../src/lib/roles';
 import CmpHeader from '../components/CmpHeader';
+import CmpAnalytics from '../components/CmpAnalytics';
 
 interface IUser {
   strUserId: string;
@@ -173,6 +174,11 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
+          </div>
+
+          {/* Analytics Section */}
+          <div className="mt-6">
+            <CmpAnalytics objUser={objUser} />
           </div>
         </div>
       </main>
