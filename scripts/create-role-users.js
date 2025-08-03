@@ -39,14 +39,7 @@ const arrTestUsers = [
     strEmail: 'partneruser@tornado.com',
     strName: 'Partner Customer',
     strPassword: 'password123',
-          strRole: 'partner_customer'
-  },
-  {
-    strUsername: 'enduser',
-    strEmail: 'enduser@tornado.com',
-    strName: 'End User',
-    strPassword: 'password123',
-    strRole: 'end_user'
+    strRole: 'partner_customer'
   }
 ];
 

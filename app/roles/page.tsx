@@ -77,7 +77,7 @@ export default function RolesPage() {
               Role System Overview
             </h2>
             <p className="text-gray-600">
-              The Tornado Portal uses a hierarchical role-based access control (RBAC) system with five distinct roles.
+              The Tornado Portal uses a hierarchical role-based access control (RBAC) system with four distinct roles.
             </p>
           </div>
 
@@ -154,13 +154,6 @@ export default function RolesPage() {
                   <div className="flex-1">
                     <div className="text-sm font-medium text-gray-900">Partner Customer</div>
                     <div className="text-xs text-gray-500">Can create quotes and view orders</div>
-                  </div>
-                  <div className="text-gray-400">↓</div>
-                </div>
-                <div className="flex items-center space-x-4 ml-16">
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-gray-900">End User</div>
-                    <div className="text-xs text-gray-500">Basic quote and order access</div>
                   </div>
                 </div>
               </div>

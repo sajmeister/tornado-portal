@@ -4,8 +4,7 @@ export enum EUserRole {
   SUPER_ADMIN = 'super_admin',
   PROVIDER_USER = 'provider_user',
   PARTNER_ADMIN = 'partner_admin',
-  PARTNER_CUSTOMER = 'partner_customer',
-  END_USER = 'end_user'
+  PARTNER_CUSTOMER = 'partner_customer'
 }
 
 export interface IRolePermission {
@@ -78,17 +77,6 @@ export const objRoleDefinitions: Record<EUserRole, IRoleDefinition> = {
       { strPermission: 'quote:view', strDescription: 'View own quotes', bIsGranted: true },
       { strPermission: 'order:view', strDescription: 'View own orders', bIsGranted: true },
     ]
-  },
-  [EUserRole.END_USER]: {
-    strRole: EUserRole.END_USER,
-    strDisplayName: 'End User',
-    strDescription: 'Customer with basic quote and order access',
-    arrPermissions: [
-      { strPermission: 'product:view', strDescription: 'View products', bIsGranted: true },
-      { strPermission: 'quote:create', strDescription: 'Create quotes', bIsGranted: true },
-      { strPermission: 'quote:view', strDescription: 'View own quotes', bIsGranted: true },
-      { strPermission: 'order:view', strDescription: 'View own orders', bIsGranted: true },
-    ]
   }
 };
 
@@ -123,11 +111,10 @@ export function fnGetAllRoles(): IRoleDefinition[] {
 
 // Role hierarchy (for inheritance if needed)
 export const objRoleHierarchy: Record<EUserRole, EUserRole[]> = {
-  [EUserRole.SUPER_ADMIN]: [EUserRole.PROVIDER_USER, EUserRole.PARTNER_ADMIN, EUserRole.PARTNER_CUSTOMER, EUserRole.END_USER],
-  [EUserRole.PROVIDER_USER]: [EUserRole.PARTNER_ADMIN, EUserRole.PARTNER_CUSTOMER, EUserRole.END_USER],
-  [EUserRole.PARTNER_ADMIN]: [EUserRole.PARTNER_CUSTOMER, EUserRole.END_USER],
-  [EUserRole.PARTNER_CUSTOMER]: [EUserRole.END_USER],
-  [EUserRole.END_USER]: []
+  [EUserRole.SUPER_ADMIN]: [EUserRole.PROVIDER_USER, EUserRole.PARTNER_ADMIN, EUserRole.PARTNER_CUSTOMER],
+  [EUserRole.PROVIDER_USER]: [EUserRole.PARTNER_ADMIN, EUserRole.PARTNER_CUSTOMER],
+  [EUserRole.PARTNER_ADMIN]: [EUserRole.PARTNER_CUSTOMER],
+  [EUserRole.PARTNER_CUSTOMER]: []
 };
 
 // Check if a role can manage another role
