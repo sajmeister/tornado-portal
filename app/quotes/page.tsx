@@ -1085,7 +1085,7 @@ function CreateQuoteModal({
   };
 
   const fnCalculatePartnerMargin = (): number => {
-    return fnCalculatePartnerTotal() - fnCalculateCustomerTotal();
+    return fnCalculateCustomerTotal() - fnCalculatePartnerTotal();
   };
 
   return (
@@ -1233,9 +1233,11 @@ function CreateQuoteModal({
                           step="0.01"
                           value={item.decUnitPrice}
                           onChange={(e) => fnUpdateItem(index, 'decUnitPrice', parseFloat(e.target.value) || 0)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                            bIsPartnerUser ? 'bg-gray-100 cursor-not-allowed' : ''
+                          }`}
                           required
-                          readOnly={!bIsPartnerUser} // Only partners can edit partner prices
+                                                              readOnly={bIsPartnerUser}
                         />
                         {item.strProductId && strPartnerId && (
                           <p className="text-xs text-gray-500 mt-1">
@@ -1346,13 +1348,13 @@ function CreateQuoteModal({
                     <div className="text-xs text-blue-500">What customer pays</div>
                   </div>
                   
-                                      <div className="text-center p-4 bg-orange-50 rounded-lg">
-                      <div className="text-sm text-orange-600">Your Margin</div>
-                      <div className={`text-lg font-semibold ${fnCalculatePartnerMargin() >= 0 ? 'text-orange-700' : 'text-red-600'}`}>
+                                      <div className={`text-center p-4 rounded-lg ${fnCalculatePartnerMargin() >= 0 ? 'bg-green-50' : 'bg-orange-50'}`}>
+                      <div className={`text-sm ${fnCalculatePartnerMargin() >= 0 ? 'text-green-600' : 'text-orange-600'}`}>Your Margin</div>
+                      <div className={`text-lg font-semibold ${fnCalculatePartnerMargin() >= 0 ? 'text-green-700' : 'text-red-600'}`}>
                         ${fnCalculatePartnerMargin().toFixed(2)}
                       </div>
-                      <div className="text-xs text-orange-500">
-                        {fnCalculatePartnerMargin() >= 0 ? 'Extra margin' : 'Discount at your expense'}
+                      <div className={`text-xs ${fnCalculatePartnerMargin() >= 0 ? 'text-green-500' : 'text-orange-500'}`}>
+                        {fnCalculatePartnerMargin() >= 0 ? 'Extra margin' : 'Discount'}
                       </div>
                     </div>
                 </>

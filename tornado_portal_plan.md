@@ -566,6 +566,7 @@ tornado-portal/
 186. ✅ Added margin calculation and profit/loss indicators for partner users
 187. ✅ Ensured provider always gets paid the full partner price regardless of customer pricing
 188. ✅ **UPDATED: Enhanced visual feedback to show extra margin (green) vs discount (orange) indicators**
+189. ✅ **FIXED: Corrected margin calculation logic - now properly shows profit (positive) vs discount (negative)**
 
 ### Next Session Goals:
 1. [x] ✅ **COMPLETED: Partner Product Access Implementation**
