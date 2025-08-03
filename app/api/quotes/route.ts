@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/src/lib/db';
-import { tblQuotes, tblQuoteItems, tblProducts, tblUsers, tblPartners, tblOrders } from '@/src/lib/db/schema';
+import { tblQuotes, tblQuoteItems, tblProducts, tblUsers, tblPartners, tblOrders, tblPartnerUsers } from '@/src/lib/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { fnGetUserPartnerId, fnCanBypassPartnerIsolation } from '@/src/lib/partners';
 
@@ -85,6 +85,21 @@ export async function GET(request: NextRequest) {
 
         const objPartner = arrPartners[0] || { strPartnerName: 'Unknown Partner', strPartnerCode: 'UNK' };
 
+        // Get customer info if quote has a customer
+        let objCustomer = null;
+        if (objQuote.strCustomerId) {
+          const arrCustomers = await db.select({
+            strUserId: tblUsers.strUserId,
+            strName: tblUsers.strName,
+            strEmail: tblUsers.strEmail,
+            strUsername: tblUsers.strUsername,
+          })
+          .from(tblUsers)
+          .where(eq(tblUsers.strUserId, objQuote.strCustomerId));
+          
+          objCustomer = arrCustomers[0] || null;
+        }
+
         // Check if order already exists for this quote
         const arrExistingOrders = await db.select().from(tblOrders).where(eq(tblOrders.strQuoteId, objQuote.strQuoteId));
         const bHasOrder = arrExistingOrders.length > 0;
@@ -93,6 +108,7 @@ export async function GET(request: NextRequest) {
           ...objQuote,
           arrItems: arrQuoteItems,
           objPartner: objPartner,
+          objCustomer: objCustomer,
           bHasOrder: bHasOrder
         };
       })
@@ -136,7 +152,7 @@ export async function POST(request: NextRequest) {
     }
 
     const objBody = await request.json();
-    const { strNotes, dtValidUntil, arrItems } = objBody;
+    const { strNotes, dtValidUntil, arrItems, strCustomerId } = objBody;
 
     // Validate required fields
     if (!dtValidUntil || !arrItems || arrItems.length === 0) {
@@ -190,6 +206,26 @@ export async function POST(request: NextRequest) {
       strPartnerId = strUserPartnerId;
     }
 
+    // Validate customer ID if provided
+    if (strCustomerId) {
+      // Check if the customer exists and belongs to the partner
+      const arrPartnerUsers = await db.select()
+        .from(tblPartnerUsers)
+        .where(and(
+          eq(tblPartnerUsers.strUserId, strCustomerId),
+          eq(tblPartnerUsers.strPartnerId, strPartnerId),
+          eq(tblPartnerUsers.strRole, 'partner_customer'),
+          eq(tblPartnerUsers.bIsActive, true)
+        ));
+      
+      if (arrPartnerUsers.length === 0) {
+        return NextResponse.json({ 
+          success: false, 
+          error: 'Invalid customer ID or customer does not belong to this partner' 
+        }, { status: 400 });
+      }
+    }
+
     // Generate quote number (Q-YYYYMMDD-XXXX format)
     const dtNow = new Date();
     const strDate = dtNow.toISOString().slice(0, 10).replace(/-/g, '');
@@ -215,6 +251,7 @@ export async function POST(request: NextRequest) {
       strQuoteId: `quote_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       strQuoteNumber,
       strPartnerId,
+      strCustomerId: strCustomerId || null,
       strCreatedBy: strUserIdNonNull,
       strStatus: 'draft',
       decSubtotal,

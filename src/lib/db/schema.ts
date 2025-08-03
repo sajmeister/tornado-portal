@@ -66,6 +66,7 @@ export const tblQuotes = sqliteTable('tblQuotes', {
   strQuoteId: text('strQuoteId').primaryKey(),
   strQuoteNumber: text('strQuoteNumber').notNull(),
   strPartnerId: text('strPartnerId').notNull(),
+  strCustomerId: text('strCustomerId'), // Customer the quote is for (optional for backward compatibility)
   strCreatedBy: text('strCreatedBy').notNull(),
   strStatus: text('strStatus').notNull(),
   decSubtotal: real('decSubtotal').notNull(), // Partner price subtotal (what provider gets paid)

@@ -36,6 +36,7 @@ interface IQuote {
   strQuoteId: string;
   strQuoteNumber: string;
   strPartnerId: string;
+  strCustomerId?: string;
   strCreatedBy: string;
   strStatus: string;
   decSubtotal: number; // Partner subtotal (what provider gets paid)
@@ -52,6 +53,12 @@ interface IQuote {
   objPartner?: {
     strPartnerName: string;
     strPartnerCode: string;
+  };
+  objCustomer?: {
+    strUserId: string;
+    strName: string;
+    strEmail: string;
+    strUsername: string;
   };
   bHasOrder?: boolean;
 }
@@ -75,10 +82,21 @@ interface IPartner {
   bIsActive: boolean;
 }
 
+interface ICustomer {
+  strPartnerUserId: string;
+  strUserId: string;
+  strRole: string;
+  dtCreated: string;
+  strUsername: string;
+  strEmail: string;
+  strName: string;
+}
+
 export default function QuotesPage() {
   const [arrQuotes, setArrQuotes] = useState<IQuote[]>([]);
   const [arrProducts, setArrProducts] = useState<IProduct[]>([]);
   const [arrPartners, setArrPartners] = useState<IPartner[]>([]);
+  const [arrCustomers, setArrCustomers] = useState<ICustomer[]>([]);
   const [objUser, setObjUser] = useState<IUser | null>(null);
   const [bIsLoading, setIsLoading] = useState(true);
   const [bIsCreating, setIsCreating] = useState(false);
@@ -163,6 +181,15 @@ export default function QuotesPage() {
             setArrPartners(objPartnersData.partners);
           }
         }
+
+        // Load customers (for Partner admins)
+        if (objCurrentUser.strRole === 'partner_admin') {
+          const objCustomersResponse = await fetch('/api/partners/me/customers');
+          const objCustomersData = await objCustomersResponse.json();
+          if (objCustomersData.success) {
+            setArrCustomers(objCustomersData.customers);
+          }
+        }
       } catch (error) {
         setStrError('Error loading data');
       } finally {
@@ -177,6 +204,7 @@ export default function QuotesPage() {
     strNotes: string;
     dtValidUntil: string;
     strPartnerId?: string;
+    strCustomerId?: string;
     arrItems: Array<{
       strProductId: string;
       intQuantity: number;
@@ -419,6 +447,11 @@ export default function QuotesPage() {
                    {objQuote.objPartner.strPartnerName}
                  </p>
                )}
+               {objQuote.objCustomer && (
+                 <p className="text-sm text-green-600 font-medium mt-1">
+                   Customer: {objQuote.objCustomer.strName}
+                 </p>
+               )}
                  </div>
                  <div className="text-right">
                    <div className="text-xs text-gray-500 mb-1">Status</div>
@@ -585,6 +618,7 @@ export default function QuotesPage() {
         <CreateQuoteModal
           products={arrProducts}
           partners={arrPartners}
+          customers={arrCustomers}
           objUser={objUser}
           onSubmit={fnCreateQuote}
           onClose={() => setBShowCreateModal(false)}
@@ -693,6 +727,13 @@ function QuoteDetailsModal({
                   <label className="block text-sm font-medium text-gray-700">Quote Number</label>
                   <p className="text-sm text-gray-900 font-mono">{quote.strQuoteNumber}</p>
                 </div>
+                {quote.objCustomer && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Customer</label>
+                    <p className="text-sm text-gray-900">{quote.objCustomer.strName}</p>
+                    <p className="text-xs text-gray-500">{quote.objCustomer.strEmail}</p>
+                  </div>
+                )}
                                                    <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                     <div className={`inline-flex items-center px-4 py-2 rounded-lg text-sm font-semibold uppercase tracking-wide ${getStatusColor(quote.strStatus, objUser)}`}>
@@ -924,6 +965,7 @@ function QuoteDetailsModal({
 function CreateQuoteModal({ 
   products, 
   partners,
+  customers,
   objUser,
   onSubmit, 
   onClose, 
@@ -931,11 +973,13 @@ function CreateQuoteModal({
 }: { 
   products: IProduct[];
   partners: IPartner[];
+  customers: ICustomer[];
   objUser: IUser | null;
   onSubmit: (data: {
     strNotes: string;
     dtValidUntil: string;
     strPartnerId?: string;
+    strCustomerId?: string;
     arrItems: Array<{
       strProductId: string;
       intQuantity: number;
@@ -950,6 +994,7 @@ function CreateQuoteModal({
   const [strNotes, setStrNotes] = useState('');
   const [dtValidUntil, setDtValidUntil] = useState('');
   const [strPartnerId, setStrPartnerId] = useState('');
+  const [strCustomerId, setStrCustomerId] = useState('');
   const [arrPartnerPrices, setArrPartnerPrices] = useState<any[]>([]);
   const [bIsLoadingPartnerPrices, setIsLoadingPartnerPrices] = useState(false);
   const [arrItems, setArrItems] = useState<Array<{
@@ -1087,6 +1132,7 @@ function CreateQuoteModal({
       strNotes,
       dtValidUntil,
       strPartnerId: strPartnerId || undefined,
+      strCustomerId: strCustomerId || undefined,
       arrItems: arrValidItems
     });
   };
@@ -1162,6 +1208,32 @@ function CreateQuoteModal({
                 {strPartnerId && (
                   <p className="text-xs text-blue-600 mt-1">
                     Partner-specific pricing will be applied to all products
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Customer selection for Partner admins */}
+            {objUser && objUser.strRole === 'partner_admin' && customers.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Customer
+                </label>
+                <select
+                  value={strCustomerId}
+                  onChange={(e) => setStrCustomerId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select a customer (optional)</option>
+                  {customers.map((customer) => (
+                    <option key={customer.strUserId} value={customer.strUserId}>
+                      {customer.strName} ({customer.strEmail})
+                    </option>
+                  ))}
+                </select>
+                {strCustomerId && (
+                  <p className="text-xs text-green-600 mt-1">
+                    Quote will be created for the selected customer
                   </p>
                 )}
               </div>
