@@ -575,6 +575,7 @@ tornado-portal/
 195. ✅ Updated API validation to prevent Partner Customers from creating quotes
 196. ✅ Enhanced "No quotes yet" message for Partner Customers
 197. ✅ Updated role permissions to include quote:accept and quote:reject for Partner Customers
+198. ✅ **FIXED: Resolved "Access denied" error for Partner Customers on Quotes page - updated permission check to allow viewing quotes**
 
 ### Next Session Goals:
 1. [x] ✅ **COMPLETED: Partner Product Access Implementation**

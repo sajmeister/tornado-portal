@@ -127,9 +127,10 @@ export default function QuotesPage() {
         const objCurrentUser = objUserData.user;
         setObjUser(objCurrentUser);
 
-        // Check if user has permission
-        if (!fnCanManageQuotes(objCurrentUser.strRole)) {
-          setStrError('Access denied. You do not have permission to manage quotes.');
+        // Check if user has permission to view quotes
+        const arrCanViewQuotes = ['super_admin', 'provider_user', 'partner_admin', 'partner_customer'];
+        if (!objCurrentUser.strRole || !arrCanViewQuotes.includes(objCurrentUser.strRole)) {
+          setStrError('Access denied. You do not have permission to view quotes.');
           setIsLoading(false);
           return;
         }
