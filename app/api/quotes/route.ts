@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/src/lib/db';
-import { tblQuotes, tblQuoteItems, tblProducts, tblUsers, tblPartners } from '@/src/lib/db/schema';
+import { tblQuotes, tblQuoteItems, tblProducts, tblUsers, tblPartners, tblOrders } from '@/src/lib/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
 import { fnGetUserPartnerId, fnCanBypassPartnerIsolation } from '@/src/lib/partners';
 
@@ -85,10 +85,15 @@ export async function GET(request: NextRequest) {
 
         const objPartner = arrPartners[0] || { strPartnerName: 'Unknown Partner', strPartnerCode: 'UNK' };
 
+        // Check if order already exists for this quote
+        const arrExistingOrders = await db.select().from(tblOrders).where(eq(tblOrders.strQuoteId, objQuote.strQuoteId));
+        const bHasOrder = arrExistingOrders.length > 0;
+
         return {
           ...objQuote,
           arrItems: arrQuoteItems,
-          objPartner: objPartner
+          objPartner: objPartner,
+          bHasOrder: bHasOrder
         };
       })
     );

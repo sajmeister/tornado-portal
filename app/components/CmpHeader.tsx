@@ -119,7 +119,7 @@ export default function CmpHeader({ objUser, onLogout }: CmpHeaderProps) {
                     onClick={() => router.push('/partners')}
                     className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
                   >
-                    Partners
+                    {objUser.strRole === 'partner_admin' || objUser.strRole === 'partner_user' ? 'Your Organization' : 'Partners'}
                   </button>
                 )}
                 

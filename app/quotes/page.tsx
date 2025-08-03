@@ -48,6 +48,7 @@ interface IQuote {
     strPartnerName: string;
     strPartnerCode: string;
   };
+  bHasOrder?: boolean;
 }
 
 interface IUser {
@@ -391,11 +392,11 @@ export default function QuotesPage() {
                  <div>
                    <h3 className="text-lg font-semibold text-gray-900">{objQuote.strQuoteNumber}</h3>
                    <p className="text-sm text-gray-500">Created {new Date(objQuote.dtCreated).toLocaleDateString()}</p>
-                   {objUser && fnCanBypassPartnerIsolation(objUser.strRole) && objQuote.objPartner && (
-                     <p className="text-sm text-blue-600 font-medium mt-1">
-                       Target: {objQuote.objPartner.strPartnerName}
-                     </p>
-                   )}
+                                  {objUser && fnCanBypassPartnerIsolation(objUser.strRole) && objQuote.objPartner && (
+                 <p className="text-sm text-blue-600 font-medium mt-1">
+                   {objQuote.objPartner.strPartnerName}
+                 </p>
+               )}
                  </div>
                  <div className="text-right">
                    <div className="text-xs text-gray-500 mb-1">Status</div>
@@ -512,13 +513,20 @@ export default function QuotesPage() {
                 )}
                 
                 {/* Convert to Order button for approved quotes */}
-                {objUser && fnHasPermission(objUser.strRole, 'quote:manage') && objQuote.strStatus === 'approved' && (
+                {objUser && fnHasPermission(objUser.strRole, 'quote:manage') && objQuote.strStatus === 'approved' && !objQuote.bHasOrder && (
                   <button 
                     onClick={() => fnConvertQuoteToOrder(objQuote.strQuoteId)}
                     className="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
                   >
                     Convert to Order
                   </button>
+                )}
+                
+                {/* Show "Order Created" indicator if quote has been converted */}
+                {objQuote.bHasOrder && (
+                  <div className="flex-1 bg-gray-100 text-gray-600 px-3 py-2 rounded text-sm font-medium text-center">
+                    Order Created
+                  </div>
                 )}
               </div>
             </div>

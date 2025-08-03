@@ -76,6 +76,7 @@ interface IQuote {
   dtValidUntil: string;
   dtCreated: string;
   bIsActive: boolean;
+  bHasOrder?: boolean;
 }
 
 interface IUser {
@@ -168,7 +169,7 @@ export default function OrdersPage() {
           if (objQuotesData.success) {
             // Filter for approved quotes that haven't been converted to orders
             const arrApprovedQuotes = objQuotesData.quotes.filter((quote: IQuote) => 
-              quote.strStatus === 'approved' && quote.bIsActive
+              quote.strStatus === 'approved' && quote.bIsActive && !quote.bHasOrder
             );
             setArrQuotes(arrApprovedQuotes);
           }
@@ -219,7 +220,7 @@ export default function OrdersPage() {
         const objQuotesData = await objQuotesResponse.json();
         if (objQuotesData.success) {
           const arrApprovedQuotes = objQuotesData.quotes.filter((quote: IQuote) => 
-            quote.strStatus === 'approved' && quote.bIsActive
+            quote.strStatus === 'approved' && quote.bIsActive && !quote.bHasOrder
           );
           setArrQuotes(arrApprovedQuotes);
         }

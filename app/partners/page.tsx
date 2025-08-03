@@ -313,9 +313,14 @@ export default function PartnersPage() {
           {/* Page Header */}
           <div className="mb-8 flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Partners</h1>
+              <h1 className="text-3xl font-bold text-gray-900">
+                {objUser?.strRole === 'partner_admin' || objUser?.strRole === 'partner_user' ? 'Your Organization' : 'Partners'}
+              </h1>
               <p className="mt-2 text-sm text-gray-600">
-                Manage partner organizations and their settings
+                {objUser?.strRole === 'partner_admin' || objUser?.strRole === 'partner_user' 
+                  ? 'Manage your organization and settings'
+                  : 'Manage partner organizations and their settings'
+                }
               </p>
             </div>
             
