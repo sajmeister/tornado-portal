@@ -188,7 +188,7 @@ export async function PUT(
     }
 
     // Validate role
-    const arrValidRoles = ['super_admin', 'provider_user', 'partner_admin', 'partner_user'];
+    const arrValidRoles = ['super_admin', 'provider_user', 'partner_admin', 'partner_customer'];
     if (!arrValidRoles.includes(strRole)) {
       return NextResponse.json({ 
         success: false, 

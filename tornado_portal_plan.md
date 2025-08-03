@@ -507,7 +507,7 @@ tornado-portal/
 127. ✅ Prevented duplicate quote-to-order conversion attempts from Orders page dropdown
 128. ✅ **MAJOR MILESTONE: Partner Navigation Enhancement Completed!**
 129. ✅ Updated header navigation to show "Your Organization" instead of "Partners" for Partner users
-130. ✅ Applied conditional text display based on user role (partner_admin, partner_user)
+130. ✅ Applied conditional text display based on user role (partner_admin, partner_customer)
 131. ✅ Maintained "Partners" text for Super Admin and Provider User roles
 132. ✅ Enhanced user experience for Partner users with more personalized navigation
 133. ✅ **MAJOR MILESTONE: Partners Page Header Enhancement Completed!**

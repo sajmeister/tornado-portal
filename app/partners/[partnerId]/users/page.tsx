@@ -168,7 +168,7 @@ export default function PartnerUsersPage() {
             strEmail: '',
             strName: '',
             strPassword: '',
-            strRole: 'partner_user'
+            strRole: 'partner_customer'
           });
                   setStrError(''); // Clear any previous errors
         fnLoadPartnerUsers(); // Refresh the list
@@ -203,7 +203,7 @@ export default function PartnerUsersPage() {
     // Check if this is the last admin trying to change their role to user
     if (objEditingUser.strUserId === objUser?.strUserId && 
         objEditingUser.strRole === 'partner_admin' && 
-        strEditingRole === 'partner_user') {
+        strEditingRole === 'partner_customer') {
       
       // Count how many admins exist for this partner
       const arrAdmins = arrPartnerUsers.filter(user => 
@@ -232,7 +232,7 @@ export default function PartnerUsersPage() {
       if (objData.success) {
         setShowEditUserModal(false);
         setObjEditingUser(null);
-        setEditingRole('partner_user');
+        setEditingRole('partner_customer');
         setStrError(''); // Clear any previous errors
         fnLoadPartnerUsers(); // Refresh the list
       } else {

@@ -207,7 +207,7 @@ export async function fnAssociateUserWithPartner(
   strRole: string
 ): Promise<boolean> {
   try {
-    const strPartnerUserId = `partner_user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const strPartnerUserId = `partner_customer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const dtNow = new Date();
 
     await db

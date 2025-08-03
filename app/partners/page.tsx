@@ -314,10 +314,10 @@ export default function PartnersPage() {
           <div className="mb-8 flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">
-                {objUser?.strRole === 'partner_admin' || objUser?.strRole === 'partner_user' ? 'Your Organization' : 'Partners'}
+                {objUser?.strRole === 'partner_admin' || objUser?.strRole === 'partner_customer' ? 'Your Organization' : 'Partners'}
               </h1>
               <p className="mt-2 text-sm text-gray-600">
-                {objUser?.strRole === 'partner_admin' || objUser?.strRole === 'partner_user' 
+                {objUser?.strRole === 'partner_admin' || objUser?.strRole === 'partner_customer' 
                   ? 'Manage your organization and settings'
                   : 'Manage partner organizations and their settings'
                 }
