@@ -860,11 +860,12 @@ function QuoteDetailsModal({
             </div>
           )}
 
-          {/* Status Update Section - Only for users who can manage quotes */}
-          {canManageQuotes && (
+          {/* Status Update Section - For users who can manage quotes or Partner Customers approving/rejecting their quotes */}
+          {((canManageQuotes && (
             (quote.strStatus === 'draft' && objUser && fnCanBypassPartnerIsolation(objUser.strRole)) || 
             (quote.strStatus === 'sent' && objUser && !fnCanBypassPartnerIsolation(objUser.strRole))
-          ) && (
+          )) || 
+          (objUser?.strRole === 'partner_customer' && quote.strStatus === 'sent' && quote.strCustomerId === objUser.strUserId)) && (
             <div className="border-t border-gray-200 pt-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Update Status</h3>
               <div className="space-y-4">
@@ -882,6 +883,12 @@ function QuoteDetailsModal({
                       </>
                     )}
                     {quote.strStatus === 'sent' && objUser && !fnCanBypassPartnerIsolation(objUser.strRole) && (
+                      <>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                      </>
+                    )}
+                    {quote.strStatus === 'sent' && objUser?.strRole === 'partner_customer' && quote.strCustomerId === objUser.strUserId && (
                       <>
                         <option value="approved">Approved</option>
                         <option value="rejected">Rejected</option>

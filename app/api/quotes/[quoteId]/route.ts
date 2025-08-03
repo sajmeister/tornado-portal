@@ -47,17 +47,6 @@ export async function PUT(
       }, { status: 400 });
     }
 
-    // Check permissions based on status change
-    if (strStatus.toLowerCase() === 'approved' || strStatus.toLowerCase() === 'rejected') {
-      // Only Super Admin and Provider User can approve/reject quotes
-      if (!objUser.strRole || !fnHasPermission(objUser.strRole, 'quote:manage')) {
-        return NextResponse.json({
-          success: false,
-          message: 'Access denied. Only Super Admin and Provider User can approve or reject quotes.'
-        }, { status: 403 });
-      }
-    }
-
     // Get the quote and verify it exists
     const arrQuotes = await db.select().from(tblQuotes).where(eq(tblQuotes.strQuoteId, strQuoteId));
     if (arrQuotes.length === 0) {
@@ -68,6 +57,21 @@ export async function PUT(
     }
 
     const objQuote = arrQuotes[0];
+
+    // Check permissions based on status change
+    if (strStatus.toLowerCase() === 'approved' || strStatus.toLowerCase() === 'rejected') {
+      // Check if user has permission to approve/reject quotes
+      const bCanApproveReject = 
+        fnHasPermission(objUser.strRole || '', 'quote:manage') || // Super Admin, Provider User, Partner Admin
+        (objUser.strRole === 'partner_customer' && objQuote.strCustomerId === strUserIdNonNull); // Partner Customer can approve/reject quotes created for them
+      
+      if (!bCanApproveReject) {
+        return NextResponse.json({
+          success: false,
+          message: 'Access denied. You do not have permission to approve or reject this quote.'
+        }, { status: 403 });
+      }
+    }
 
     // Check if quote is active
     if (!objQuote.bIsActive) {
