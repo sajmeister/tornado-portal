@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import CmpHeader from '../../../components/CmpHeader';
+import { fnHasPermission } from '../../../../src/lib/roles';
 
 interface IPartnerUser {
   strPartnerUserId: string;
@@ -62,7 +63,7 @@ export default function PartnerUsersPage() {
 
   // Check if user has permission to manage partner users
   const fnCanManagePartnerUsers = (strRole: string): boolean => {
-    return ['super_admin', 'partner_admin'].includes(strRole);
+    return fnHasPermission(strRole, 'user:manage_partner');
   };
 
   const handleLogout = async () => {

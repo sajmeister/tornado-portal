@@ -28,7 +28,8 @@ export const objRoleDefinitions: Record<EUserRole, IRoleDefinition> = {
     strDisplayName: 'Super Admin',
     strDescription: 'Full system access with all permissions',
     arrPermissions: [
-      { strPermission: 'user:manage', strDescription: 'Manage all users', bIsGranted: true },
+      { strPermission: 'user:manage', strDescription: 'Manage all users (system-wide)', bIsGranted: true },
+      { strPermission: 'user:manage_partner', strDescription: 'Manage users within partner organizations', bIsGranted: true },
       { strPermission: 'partner:manage', strDescription: 'Manage all partners', bIsGranted: true },
       { strPermission: 'product:manage', strDescription: 'Manage all products', bIsGranted: true },
       { strPermission: 'quote:manage', strDescription: 'Manage all quotes', bIsGranted: true },
@@ -58,7 +59,7 @@ export const objRoleDefinitions: Record<EUserRole, IRoleDefinition> = {
     strDescription: 'Partner company administrator with team management',
     arrPermissions: [
       { strPermission: 'user:create', strDescription: 'Create new users for own partner', bIsGranted: true },
-      { strPermission: 'user:manage', strDescription: 'Manage users within own partner organization', bIsGranted: true },
+      { strPermission: 'user:manage_partner', strDescription: 'Manage users within own partner organization', bIsGranted: true },
       { strPermission: 'user:view', strDescription: 'View users within own partner organization', bIsGranted: true },
       { strPermission: 'partner:view', strDescription: 'View own partner info', bIsGranted: true },
       { strPermission: 'product:view', strDescription: 'View products', bIsGranted: true },
