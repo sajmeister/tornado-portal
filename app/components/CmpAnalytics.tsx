@@ -227,9 +227,7 @@ export default function CmpAnalytics({ objUser }: IAnalyticsProps) {
               <DollarSign className="h-6 w-6 text-green-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">
-                {bIsProvider ? 'Total Revenue' : 'Customer Revenue'}
-              </p>
+              <p className="text-sm font-medium text-gray-600">Total Revenue</p>
               <p className="text-2xl font-bold text-gray-900">
                 {fnFormatCurrency(objAnalytics.objOverall.decTotalRevenue)}
               </p>
