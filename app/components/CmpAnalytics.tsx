@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, DollarSign, ShoppingCart, Users, Package, Calendar, Filter } from 'lucide-react';
+import { BarChart3, TrendingUp, DollarSign, ShoppingCart, Package, Calendar, Filter } from 'lucide-react';
 
 interface IAnalyticsData {
   strUserRole: string;
@@ -60,27 +60,16 @@ interface IAnalyticsData {
 }
 
 interface IAnalyticsProps {
-  objUser: any;
+  objUser: {
+    strUserId: string;
+    strName: string;
+    strEmail: string;
+    strRole: string;
+    strPartnerId?: string;
+  } | null;
 }
 
 export default function CmpAnalytics({ objUser }: IAnalyticsProps) {
-  // Partner Customers don't need sales analytics since they're end consumers
-  if (objUser.strRole === 'partner_customer') {
-    return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <ShoppingCart className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Analytics Available</h3>
-            <p className="text-sm text-gray-500">
-              Sales analytics are not available for customer accounts.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const [objAnalytics, setObjAnalytics] = useState<IAnalyticsData | null>(null);
   const [bIsLoading, setBIsLoading] = useState(true);
   const [strPeriod, setStrPeriod] = useState('30');
@@ -136,6 +125,16 @@ export default function CmpAnalytics({ objUser }: IAnalyticsProps) {
     }
   };
 
+  if (!objUser) {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-lg text-gray-500">Please log in to view analytics</div>
+        </div>
+      </div>
+    );
+  }
+
   if (bIsLoading) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
@@ -168,6 +167,23 @@ export default function CmpAnalytics({ objUser }: IAnalyticsProps) {
 
   const bIsProvider = objAnalytics.strUserRole === 'super_admin' || objAnalytics.strUserRole === 'provider_user';
   const bIsPartnerAdmin = objAnalytics.strUserRole === 'partner_admin';
+
+  // Partner Customers don't need sales analytics since they're end consumers
+  if (objUser.strRole === 'partner_customer') {
+    return (
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <ShoppingCart className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Analytics Available</h3>
+            <p className="text-sm text-gray-500">
+              Sales analytics are not available for customer accounts.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

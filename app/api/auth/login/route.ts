@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fnAuthenticateUser, fnGenerateToken } from '../../../../src/lib/auth';
 
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   try {
     const objBody = await request.json();

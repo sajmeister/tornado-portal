@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fnGetUserById } from '../../../../src/lib/auth';
 
+export const runtime = 'nodejs';
+
 export async function GET(request: NextRequest) {
   try {
     const strUserId = request.headers.get('x-user-id');

@@ -4,6 +4,8 @@ import { tblQuotes, tblOrders, tblPartners, tblUsers, tblPartnerUsers, tblQuoteI
 import { eq, and, or, isNull, isNotNull, sql, desc, count, sum } from 'drizzle-orm';
 import { fnGetUserById } from '../../../src/lib/auth';
 
+export const runtime = 'nodejs';
+
 export async function GET(request: NextRequest) {
   try {
     const strUserId = request.headers.get('x-user-id');
@@ -24,7 +26,75 @@ export async function GET(request: NextRequest) {
     const dtEnd = new Date();
     const dtStart = new Date(Date.now() - parseInt(strPeriod) * 24 * 60 * 60 * 1000);
 
-    let objAnalytics: any = {};
+    let objAnalytics: {
+      strUserRole: string;
+      strPeriod: string;
+      dtStart: string;
+      dtEnd: string;
+      objPartner?: {
+        strPartnerId: string;
+        strPartnerName: string;
+        strPartnerCode: string;
+      };
+      objOverall: {
+        intTotalQuotes: number;
+        intTotalOrders: number;
+        decTotalRevenue: number;
+        decTotalPartnerRevenue: number;
+        decTotalCustomerRevenue?: number;
+        decAverageOrderValue: number;
+        decProfitMargin?: number;
+      };
+      arrSalesByPartner?: Array<{
+        strPartnerId: string;
+        strPartnerName: string;
+        strPartnerCode: string;
+        intQuotes: number;
+        intOrders: number;
+        decRevenue: number;
+        decPartnerRevenue: number;
+      }>;
+      arrSalesByCustomer?: Array<{
+        strCustomerId: string;
+        strCustomerName: string;
+        strCustomerEmail: string;
+        intQuotes: number;
+        intOrders: number;
+        decRevenue: number;
+        decCustomerRevenue: number;
+        decPartnerRevenue: number;
+      }>;
+      arrTopProducts: Array<{
+        strProductId: string;
+        strProductName: string;
+        strProductCode: string;
+        intQuantitySold: number;
+        decRevenue: number;
+        decPartnerRevenue?: number;
+      }>;
+      arrMonthlyTrend: Array<{
+        strMonth: string;
+        intQuotes?: number;
+        intOrders: number;
+        decRevenue: number;
+        decPartnerRevenue: number;
+        decCustomerRevenue?: number;
+      }>;
+    } = {
+      strUserRole: objUser.strRole,
+      strPeriod,
+      dtStart: dtStart.toISOString(),
+      dtEnd: dtEnd.toISOString(),
+      objOverall: {
+        intTotalQuotes: 0,
+        intTotalOrders: 0,
+        decTotalRevenue: 0,
+        decTotalPartnerRevenue: 0,
+        decAverageOrderValue: 0
+      },
+      arrTopProducts: [],
+      arrMonthlyTrend: []
+    };
 
     // Provider Analytics (Super Admin and Provider User)
     if (objUser.strRole === 'super_admin' || objUser.strRole === 'provider_user') {
@@ -292,7 +362,11 @@ export async function GET(request: NextRequest) {
             : 0,
         },
         arrSalesByCustomer: arrSalesByCustomer.map(customer => ({
-          ...customer,
+          strCustomerId: customer.strCustomerId,
+          strCustomerName: customer.strCustomerName,
+          strCustomerEmail: customer.strCustomerEmail,
+          intQuotes: customer.intQuotes,
+          intOrders: customer.intOrders,
           decRevenue: parseFloat(customer.decRevenue || '0'),
           decCustomerRevenue: parseFloat(customer.decCustomerRevenue || '0'),
           decPartnerRevenue: parseFloat(customer.decPartnerRevenue || '0'),
