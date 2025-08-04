@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '../../../src/lib/db';
 import { tblQuotes, tblOrders, tblPartners, tblUsers, tblPartnerUsers, tblQuoteItems, tblOrderItems, tblProducts } from '../../../src/lib/db/schema';
-import { eq, and, sql, desc, count, sum } from 'drizzle-orm';
+import { eq, and, or, isNull, isNotNull, sql, desc, count, sum } from 'drizzle-orm';
 import { fnGetUserById } from '../../../src/lib/auth';
 
 export async function GET(request: NextRequest) {
@@ -28,17 +28,25 @@ export async function GET(request: NextRequest) {
 
     // Provider Analytics (Super Admin and Provider User)
     if (objUser.strRole === 'super_admin' || objUser.strRole === 'provider_user') {
-      // Overall sales metrics
+      // Overall sales metrics - count approved quotes OR orders, not both
       const arrOverallSales = await db
         .select({
           intTotalQuotes: count(tblQuotes.strQuoteId),
           intTotalOrders: count(tblOrders.strOrderId),
-          decTotalRevenue: sum(tblOrders.decTotal),
-          decTotalPartnerRevenue: sum(tblOrders.decSubtotal),
+          decTotalRevenue: sum(tblQuotes.decSubtotal),
+          decTotalPartnerRevenue: sum(tblOrders.decTotal),
         })
-        .from(tblOrders)
-        .leftJoin(tblQuotes, eq(tblOrders.strQuoteId, tblQuotes.strQuoteId))
-        .where(eq(tblOrders.bIsActive, true));
+        .from(tblQuotes)
+        .leftJoin(tblOrders, eq(tblQuotes.strQuoteId, tblOrders.strQuoteId))
+        .where(
+          and(
+            eq(tblQuotes.bIsActive, true),
+            or(
+              and(eq(tblQuotes.strStatus, 'approved'), isNull(tblOrders.strOrderId)),
+              isNotNull(tblOrders.strOrderId)
+            )
+          )
+        );
 
       // Sales by partner
       const arrSalesByPartner = await db
@@ -48,8 +56,8 @@ export async function GET(request: NextRequest) {
           strPartnerCode: tblPartners.strPartnerCode,
           intQuotes: count(tblQuotes.strQuoteId),
           intOrders: count(tblOrders.strOrderId),
-          decRevenue: sum(tblOrders.decTotal),
-          decPartnerRevenue: sum(tblOrders.decSubtotal),
+          decRevenue: sum(tblQuotes.decSubtotal),
+          decPartnerRevenue: sum(tblOrders.decTotal),
         })
         .from(tblPartners)
         .leftJoin(tblQuotes, eq(tblPartners.strPartnerId, tblQuotes.strPartnerId))
@@ -57,7 +65,10 @@ export async function GET(request: NextRequest) {
         .where(
           and(
             eq(tblPartners.bIsActive, true),
-            eq(tblQuotes.bIsActive, true)
+            or(
+              and(eq(tblQuotes.strStatus, 'approved'), isNull(tblOrders.strOrderId)),
+              isNotNull(tblOrders.strOrderId)
+            )
           )
         )
         .groupBy(tblPartners.strPartnerId, tblPartners.strPartnerName, tblPartners.strPartnerCode);
@@ -87,15 +98,24 @@ export async function GET(request: NextRequest) {
       // Monthly trend (last 12 months)
       const arrMonthlyTrend = await db
         .select({
-          strMonth: sql<string>`strftime('%Y-%m', datetime("tblOrders"."dtCreated", 'unixepoch'))`,
+          strMonth: sql<string>`strftime('%Y-%m', datetime("tblQuotes"."dtCreated", 'unixepoch'))`,
           intOrders: count(tblOrders.strOrderId),
-          decRevenue: sum(tblOrders.decTotal),
-          decPartnerRevenue: sum(tblOrders.decSubtotal),
+          decRevenue: sum(tblQuotes.decSubtotal),
+          decPartnerRevenue: sum(tblOrders.decTotal),
         })
-        .from(tblOrders)
-        .where(eq(tblOrders.bIsActive, true))
-        .groupBy(sql`strftime('%Y-%m', datetime("tblOrders"."dtCreated", 'unixepoch'))`)
-        .orderBy(sql`strftime('%Y-%m', datetime("tblOrders"."dtCreated", 'unixepoch'))`);
+        .from(tblQuotes)
+        .leftJoin(tblOrders, eq(tblQuotes.strQuoteId, tblOrders.strQuoteId))
+        .where(
+          and(
+            eq(tblQuotes.bIsActive, true),
+            or(
+              and(eq(tblQuotes.strStatus, 'approved'), isNull(tblOrders.strOrderId)),
+              isNotNull(tblOrders.strOrderId)
+            )
+          )
+        )
+        .groupBy(sql`strftime('%Y-%m', datetime("tblQuotes"."dtCreated", 'unixepoch'))`)
+        .orderBy(sql`strftime('%Y-%m', datetime("tblQuotes"."dtCreated", 'unixepoch'))`);
 
       objAnalytics = {
         strUserRole: objUser.strRole,

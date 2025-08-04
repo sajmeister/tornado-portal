@@ -207,64 +207,66 @@ export default function CmpAnalytics({ objUser }: IAnalyticsProps) {
         </p>
       </div>
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <ShoppingCart className="h-6 w-6 text-blue-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Orders</p>
-              <p className="text-2xl font-bold text-gray-900">{fnFormatNumber(objAnalytics.objOverall.intTotalOrders)}</p>
-            </div>
-          </div>
-        </div>
+             {/* Key Metrics */}
+       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+         <div className="bg-white rounded-lg shadow p-6">
+           <div className="flex items-center">
+             <div className="p-2 bg-orange-100 rounded-lg">
+               <Package className="h-6 w-6 text-orange-600" />
+             </div>
+             <div className="ml-4">
+               <p className="text-sm font-medium text-gray-600">Total Quotes</p>
+               <p className="text-2xl font-bold text-gray-900">{fnFormatNumber(objAnalytics.objOverall.intTotalQuotes)}</p>
+             </div>
+           </div>
+         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <DollarSign className="h-6 w-6 text-green-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {fnFormatCurrency(objAnalytics.objOverall.decTotalRevenue)}
-              </p>
-            </div>
-          </div>
-        </div>
+         <div className="bg-white rounded-lg shadow p-6">
+           <div className="flex items-center">
+             <div className="p-2 bg-blue-100 rounded-lg">
+               <ShoppingCart className="h-6 w-6 text-blue-600" />
+             </div>
+             <div className="ml-4">
+               <p className="text-sm font-medium text-gray-600">Total Orders</p>
+               <p className="text-2xl font-bold text-gray-900">{fnFormatNumber(objAnalytics.objOverall.intTotalOrders)}</p>
+             </div>
+           </div>
+         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <TrendingUp className="h-6 w-6 text-purple-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Avg Order Value</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {fnFormatCurrency(objAnalytics.objOverall.decAverageOrderValue)}
-              </p>
-            </div>
-          </div>
-        </div>
+         <div className="bg-white rounded-lg shadow p-6">
+           <div className="flex items-center">
+             <div className="p-2 bg-green-100 rounded-lg">
+               <DollarSign className="h-6 w-6 text-green-600" />
+             </div>
+             <div className="ml-4">
+               <p className="text-sm font-medium text-gray-600">
+                 {bIsProvider ? 'Total Revenue' : 'Total Customer Revenue'}
+               </p>
+               <p className="text-2xl font-bold text-gray-900">
+                 {fnFormatCurrency(objAnalytics.objOverall.decTotalRevenue)}
+               </p>
+             </div>
+           </div>
+         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <Package className="h-6 w-6 text-orange-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Quotes</p>
-              <p className="text-2xl font-bold text-gray-900">{fnFormatNumber(objAnalytics.objOverall.intTotalQuotes)}</p>
-            </div>
-          </div>
-        </div>
-      </div>
+         <div className="bg-white rounded-lg shadow p-6">
+           <div className="flex items-center">
+             <div className="p-2 bg-purple-100 rounded-lg">
+               <TrendingUp className="h-6 w-6 text-purple-600" />
+             </div>
+             <div className="ml-4">
+               <p className="text-sm font-medium text-gray-600">Avg Order Value</p>
+               <p className="text-2xl font-bold text-gray-900">
+                 {fnFormatCurrency(objAnalytics.objOverall.decAverageOrderValue)}
+               </p>
+             </div>
+           </div>
+         </div>
+       </div>
 
-      {/* Partner-specific metrics for Partners */}
-      {!bIsProvider && objAnalytics.objOverall.decProfitMargin !== undefined && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+             {/* Partner-specific metrics for Partners */}
+       {!bIsProvider && objAnalytics.objOverall.decProfitMargin !== undefined && (
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      <div className="bg-white rounded-lg shadow p-6">
              <div className="flex items-center">
                <div className="p-2 bg-indigo-100 rounded-lg">
@@ -279,19 +281,7 @@ export default function CmpAnalytics({ objUser }: IAnalyticsProps) {
              </div>
            </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-emerald-100 rounded-lg">
-                <DollarSign className="h-6 w-6 text-emerald-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Customer Revenue</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {fnFormatCurrency(objAnalytics.objOverall.decTotalCustomerRevenue || 0)}
-                </p>
-              </div>
-            </div>
-          </div>
+          
 
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">

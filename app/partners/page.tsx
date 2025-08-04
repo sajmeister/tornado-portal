@@ -366,9 +366,6 @@ export default function PartnersPage() {
                             </p>
                           </div>
                           <div className="text-right">
-                            <div className="text-sm font-medium text-gray-900">
-                              {objPartner.decDiscountRate}% Discount
-                            </div>
                             <div className="text-sm text-gray-500">
                               Partner since {fnFormatDate(objPartner.dtCreated)}
                             </div>
